@@ -1,4 +1,4 @@
-# get-client
+# ges-client
 
 A client library for (Get) Event Store [http://geteventstore.com]
 
