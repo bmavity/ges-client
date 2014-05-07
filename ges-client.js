@@ -1,4 +1,5 @@
 var request = require('request')
+	, async = require('async')
 	, uuid = require('node-uuid')
 	, esUrl = 'http://127.0.0.1:2113/streams/testy'
 	//, esUrl = 'http://127.0.0.1:2113/streams/$$$users'
@@ -44,13 +45,31 @@ function getUriToLastPage(headUri, cb) {
 	})
 }
 
+function createEntryRetriever(entry) {
+	return function(cb) {
+		var entryLink = getLinkWithRelation(entry.links, 'alternate')
+		readEvent(entryLink.uri, function(err, evt) {
+			if(err) return cb(err)
+			processEvent(evt)
+			cb()
+		})
+	}
+}
+
 function readStreamPage(pageUri, cb) {
 	makeAuthorizedRequest(pageUri, function(err, feed) {
 		if(err) return cb(err)
 
-		feed.entries.reverse().forEach(function(entry) {
-			var entryLink = getLinkWithRelation(entry.links, 'alternate')
-			readEvent(entryLink.uri, processEvent)
+		var retrievalFns = feed.entries.reverse().map(createEntryRetriever)
+
+		async.series(retrievalFns, function(err) {
+			if(err) return cb(err)
+
+			var nextPageLink = getLinkWithRelation(feed.links, 'previous')
+
+			if(!nextPageLink) return cb()
+
+			cb(null, nextPageLink.uri)
 		})
 	})
 }
@@ -63,12 +82,16 @@ function readEvent(entryUri, cb) {
 	})
 }
 
-function processEvent(err, evt) {
-	console.log(evt)
+function processEvent(evt) {
+	console.log(evt.title)
 }
 
-function processNextRemainingPage(err) {
-	console.log('move along')
+function processNextRemainingPage(err, nextPageUri) {
+	if(err) return
+
+	if(!nextPageUri) return 
+	console.log('move along to ' + nextPageUri)
+	readStreamPage(nextPageUri, processNextRemainingPage)
 }
 //var timer = new Timer(o => PostMessage(), null, 1000, 1000);
 function startSubscription(streamHeadUri) {
@@ -76,7 +99,6 @@ function startSubscription(streamHeadUri) {
   	if(err) return console.log(err)
 
     if(lastPageUri) {
-    	console.log(lastPageUri)
     	readStreamPage(lastPageUri, processNextRemainingPage)
     }
   })
