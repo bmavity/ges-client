@@ -1,25 +1,12 @@
-var request = require('request')
+var makeRequest = require('./makeRequest')
 	, async = require('async')
 	, uuid = require('node-uuid')
-	, esUrl = 'http://127.0.0.1:2113/streams/testy'
-	//, esUrl = 'http://127.0.0.1:2113/streams/$$$users'
-	, longPollHeader = 'ES-LongPoll: 10'
-	, formatHeader = 'application/vnd.eventstore.atom+json'
-	, username = 'admin'
-	, password = 'changeit'
+
+module.exports = startSubscription
 
 
-function makeAuthorizedRequest(url, cb) {
-	request({
-		url: url
-	, auth: {
-			username: username
-		, password: password
-		}
-	, headers: {
-			'Accept': formatHeader
-		}
-	}, function(err, res, body) {
+function makeAuthorizedRequest(streamName, cb) {
+	makeRequest(streamName, function(err, res, body) {
 		if(err) return cb(err)
 		cb(null, JSON.parse(body))
 	})
@@ -94,8 +81,8 @@ function processNextRemainingPage(err, nextPageUri) {
 	readStreamPage(nextPageUri, processNextRemainingPage)
 }
 
-function startSubscription(streamHeadUri) {
-  getUriToLastPage(streamHeadUri, function(err, lastPageUri) {
+function startSubscription(streamName) {
+  getUriToLastPage(streamName, function(err, lastPageUri) {
   	if(err) return console.log(err)
 
     if(lastPageUri) {
@@ -103,7 +90,3 @@ function startSubscription(streamHeadUri) {
     }
   })
 }
-
-
-//addEventToStream(esUrl)
-startSubscription(esUrl)

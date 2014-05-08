@@ -9,8 +9,9 @@ module.exports = makeAuthorizedRequest
 
 function makeAuthorizedRequest(optsOrStream, cb) {
 	var opts = is.string(optsOrStream) ? { stream: optsOrStream } : optsOrStream
+		, uri = opts.stream.indexOf('http') === 0 ? opts.stream : server + opts.stream
 		, options = {
-				url: server + opts.stream
+				url: uri
 			, auth: {
 					username: username
 				, password: password
