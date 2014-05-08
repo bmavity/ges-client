@@ -83,17 +83,17 @@ function readEvent(entryUri, cb) {
 }
 
 function processEvent(evt) {
-	console.log(evt.title)
+	console.log(evt)
 }
 
 function processNextRemainingPage(err, nextPageUri) {
 	if(err) return
 
 	if(!nextPageUri) return 
-	console.log('move along to ' + nextPageUri)
+
 	readStreamPage(nextPageUri, processNextRemainingPage)
 }
-//var timer = new Timer(o => PostMessage(), null, 1000, 1000);
+
 function startSubscription(streamHeadUri) {
   getUriToLastPage(streamHeadUri, function(err, lastPageUri) {
   	if(err) return console.log(err)
@@ -107,43 +107,3 @@ function startSubscription(streamHeadUri) {
 
 //addEventToStream(esUrl)
 startSubscription(esUrl)
-
-function addEventToStream(streamUrl) {
-  var message = [{
-  				eventType: 'MyFirstEvent'
-  			, eventId : uuid.v4()
-				, data : {
-						name: 'hello world!'
-					, number : Math.random()
-					}
-				, metadata: {
-						addedDate: new Date()
-					}
-				}
-			]
-  	, req = request.post({
-		  	url: streamUrl
-		  , body: message
-			, auth: {
-					username: username
-				, password: password
-				}
-			, json: true
-		  }) 
-  req.on('response', function() {
-		startSubscription(esUrl)
-  })
-}
-
-
-/*
-while(!stop)
-{
-  var current = readPrevious(last)
-  if(last == current)
-  {
-  	break;
-  }
-  last = current
-}
-*/
