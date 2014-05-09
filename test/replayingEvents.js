@@ -1,3 +1,3 @@
 var replay = require('../ges-client')
 
-replay('testy')
+replay('test-a')
