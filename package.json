@@ -23,6 +23,6 @@
 , "keywords": [
   ]
 , "license": "MIT +no-false-attribs, +no-advertising License"
-, "main": "./ges-client.js"
+, "main": "./connection.js"
 , "version": "0.0.1"
 }

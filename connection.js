@@ -21,7 +21,34 @@ var net = require('net')
 			}
 		}
 	, incompletePacket
+	, client
 
+module.exports = connect
+
+
+function connect(cb) {
+	client = net.connect(1113, '127.0.0.1', function() { 
+	  console.log('client connected')
+				
+		cb(null, {
+			readAllEventsForward: function() {
+			  sendMessage('ReadAllEventsForward', uuid.v4(), parser.serialize('ReadAllEvents', {
+					commit_position: 0
+				, prepare_position: 0
+				, max_count: 1000
+				, resolve_link_tos: false
+				, require_master: false
+				}), true)
+			}
+		})
+	})
+
+	client.on('data', receiveMessage)
+
+	client.on('end', function() {
+	  console.log('client disconnected')
+	})
+}
 
 function combineWithIncompletePacket(packet) {
   var newPacket = new Buffer(incompletePacket.length + packet.length)
@@ -80,22 +107,3 @@ function sendMessage(messageName, correlationId, payload, auth) {
 
   client.write(packet)
 }
-
-var client = net.connect(1113, '127.0.0.1', function() { 
-  console.log('client connected')
-			
-  sendMessage('ReadAllEventsForward', uuid.v4(), parser.serialize('ReadAllEvents', {
-		commit_position: 0
-	, prepare_position: 0
-	, max_count: 1000
-	, resolve_link_tos: false
-	, require_master: false
-	}), true)
-})
-
-client.on('data', receiveMessage)
-
-client.on('end', function() {
-  console.log('client disconnected')
-})
-
