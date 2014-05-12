@@ -1,5 +1,6 @@
 var uuid = require('node-uuid')
 	, parser = require('./messageParser')
+	, framer = require('./lengthPrefixMessageFramer')
 	, commands = require('./tcp_commands')
 	, flags = require('./tcp_flags')
 	, commandHandlers = {
@@ -79,31 +80,11 @@ client.on('end', function() {
   console.log('client disconnected')
 })
 
-function sendMessage(command, correlationId, payload, auth) {
-	send(command, payload, correlationId)
-}
+function sendMessage(messageName, correlationId, payload, auth) {
+	var packet = framer.frame(messageName, correlationId, payload, auth)
 
-function send(command, payload, correlation) {
-  var correlationId = correlation || uuid.v4()
-  	, payloadSize = payload ? payload.length : 0
-  	, dataOffset = 4
-  	, commandOffset = dataOffset
-  	, flagOffset = commandOffset + 1
-  	, correlationIdOffset = flagOffset + 1
-  	, payloadOffset = correlationIdOffset + 16
-  	, contentLength = payloadOffset + payloadSize - dataOffset
-  	, packet = new Buffer(contentLength + dataOffset)
-
-  packet.writeUInt32LE(contentLength, 0)
-  packet.writeUInt8(commands(command), commandOffset)
-  packet.writeUInt8(flags('None'), flagOffset)
-  uuid.parse(correlationId, packet, correlationIdOffset)
-
-  if (payloadSize > 0) {
-    payload.copy(packet, payloadOffset)
-  }
-
-  console.log("Sending " + command + " command with correlation id: " + correlationId)
+  console.log("Sending " + messageName + " message with correlation id: " + correlationId)
+  
   client.write(packet)
 }
 
