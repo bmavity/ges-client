@@ -7,6 +7,11 @@ var fs = require('fs')
 	, schema = new Schema(fs.readFileSync(path.resolve(__dirname, 'ges_client.desc')))
 	, commands = require('./tcp_commands')
 	, flags = require('./tcp_flags')
+	, commandHandlers = {
+			'HeartbeatRequestCommand': function(correlationId) {
+		  	sendMessage('HeartbeatResponseCommand', correlationId)
+			}
+		}
 
 
 var net = require('net')
@@ -24,7 +29,16 @@ var client = net.connect(1113, '127.0.0.1', function() {
   console.log(schema.Parse(payload, 'EventStore.Client.Messages.ReadAllEvents'))
 })
 
+var _leftoverPacketData
 client.on('data', function(data) {
+	if (_leftoverPacketData) {
+    var newPacket = new Buffer(_leftoverPacketData.length + data.length);
+    _leftoverPacketData.copy(newPacket, 0);
+    data.copy(newPacket, _leftoverPacketData.length);
+    data = newPacket;
+    _leftoverPacketData = null;
+  }
+
   var contentLength = data.readUInt32LE(0);
   var expectedPacketLength = contentLength + 4;
   if (data.length === expectedPacketLength) {
@@ -32,29 +46,42 @@ client.on('data', function(data) {
     var command = commands(packet.readUInt8(0));
     var flag = flags(packet.readUInt8(1))
 	  var correlationId = uuid.unparse(packet, 2);
+	  var payload = packet.slice(18)
 	  console.log("Received " + command + " command with flag: " + flag + " and correlation id: " + correlationId);
 
-	  var payload = null;
+	  var handler = commandHandlers[command]
+	  if(!handler) return
 
+	  return handler(correlationId, payload)
+	
 	  if(command === 'HeartbeatRequestCommand') {
-	  	console.log('sending')
-	  	return send('HeartbeatResponseCommand', null, correlationId)
+	  } else if(command === 'ReadAllEventsForwardCompleted') {
+	    var a = schema.Parse(payload, 'EventStore.Client.Messages.' + 'ReadAllEventsCompleted')
+	  	return console.log(a.events
+	  		.filter(function(evt) {
+	  			return evt.event.event_type.indexOf('$') !== 0
+	  		})
+	  		.map(function(evts) {
+		  		var evt = evts.event
+		  		evt.data = JSON.parse(evt.data.toString())
+		  		evt.metadata = JSON.parse(evt.metadata.toString())
+		  		return evt
+	  	}))
+	  } else {
+	  	return
 	  }
-	  return
+	  
 	  if (packet.length > 17) {
 	    payload = packet.slice(17);
 	    schema.Parse(payload, 'EventStore.Client.Messages.' + command)
 	  }
-  }
-  return
- // } else 
-  if (packet.length >= expectedPacketLength) {
-    console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + packet.length + " bytes)");
+  } else if (data.length >= expectedPacketLength) {
+    console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + data.length + " bytes)");
     this._onData(packet.slice(0, expectedPacketLength));
     this._onData(packet.slice(expectedPacketLength));
   } else {
-    console.log("Crap, the packet isn't big enough. Maybe there's another packet coming? (wanted: " + expectedPacketLength + " bytes, got: " + packet.length + " bytes)");
-    this._leftoverPacketData = packet;
+    console.log("Crap, the packet isn't big enough. Maybe there's another packet coming? (wanted: " + expectedPacketLength + " bytes, got: " + data.length + " bytes)");
+    _leftoverPacketData = data;
   }
 })
 
@@ -62,6 +89,9 @@ client.on('end', function() {
   console.log('client disconnected')
 })
 
+function sendMessage(command, correlationId, payload, auth) {
+	send(command, payload, correlationId)
+}
 
 function send(command, payload, correlation) {
   var correlationId = correlation || uuid.v4()
