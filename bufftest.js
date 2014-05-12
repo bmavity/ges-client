@@ -1,8 +1,7 @@
-var uuid = require('node-uuid')
+var net = require('net')
+	, uuid = require('node-uuid')
 	, parser = require('./messageParser')
 	, framer = require('./lengthPrefixMessageFramer')
-	, commands = require('./tcp_commands')
-	, flags = require('./tcp_flags')
 	, commandHandlers = {
 			'HeartbeatRequestCommand': function(correlationId) {
 		  	sendMessage('HeartbeatResponseCommand', correlationId)
@@ -21,9 +20,67 @@ var uuid = require('node-uuid')
 		  	}))
 			}
 		}
+	, incompletePacket
 
 
-var net = require('net')
+function combineWithIncompletePacket(packet) {
+  var newPacket = new Buffer(incompletePacket.length + packet.length)
+  incompletePacket.copy(newPacket, 0)
+  packet.copy(newPacket, incompletePacket.length)
+  incompletePacket = null
+  return newPacket
+}
+
+function handleCompletePacket(packet) {
+	var unframedPacket = framer.unframe(packet)
+  	, handler = commandHandlers[unframedPacket.command]
+
+  console.log("Received " + unframedPacket.command
+  	+ " command with flag: " + unframedPacket.flag
+  	+ " and correlation id: " + unframedPacket.correlationId
+	)
+
+  if(!handler) return
+
+  handler(unframedPacket.correlationId, unframedPacket.payload)
+}
+
+function handleIncompletePacket(packet, expectedPacketLength) {
+  console.log('Incomplete Packet (wanted: ' + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
+	incompletePacket = packet
+}
+
+function handleMultiplePackets(packet, expectedPacketLength) {
+  console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
+  receiveMessage(packet.slice(0, expectedPacketLength))
+  receiveMessage(packet.slice(expectedPacketLength))
+}
+
+function receiveMessage(data) {
+	if(incompletePacket) {
+		data = combineWithIncompletePacket(data)
+  }
+
+  var contentLength = framer.getContentLength(data)
+  	, expectedPacketLength = contentLength + 4
+
+  if (data.length === expectedPacketLength) {
+  	handleCompletePacket(data)
+  } else if (data.length > expectedPacketLength) {
+  	handleMultiplePackets(data, expectedPacketLength)
+  } else {
+    handleIncompletePacket(data, expectedPacketLength)
+  }
+}
+
+function sendMessage(messageName, correlationId, payload, auth) {
+	var packet = framer.frame(messageName, correlationId, payload, auth)
+
+  console.log("Sending " + messageName + " message with correlation id: " + correlationId)
+
+  client.write(packet)
+}
+
 var client = net.connect(1113, '127.0.0.1', function() { 
   console.log('client connected')
 			
@@ -36,54 +93,9 @@ var client = net.connect(1113, '127.0.0.1', function() {
 	}), true)
 })
 
-var _leftoverPacketData
-client.on('data', function(data) {
-	if (_leftoverPacketData) {
-    var newPacket = new Buffer(_leftoverPacketData.length + data.length);
-    _leftoverPacketData.copy(newPacket, 0);
-    data.copy(newPacket, _leftoverPacketData.length);
-    data = newPacket;
-    _leftoverPacketData = null;
-  }
-
-  var contentLength = framer.getContentLength(data)
-  var expectedPacketLength = contentLength + 4;
-  if (data.length === expectedPacketLength) {
-  	var unframedPacket = framer.unframe(data)
-	  	, handler = commandHandlers[unframedPacket.command]
-	  	
-	  console.log("Received " + unframedPacket.command
-	  	+ " command with flag: " + unframedPacket.flag
-	  	+ " and correlation id: " + unframedPacket.correlationId
-  	)
-
-	  if(!handler) return
-
-	  handler(unframedPacket.correlationId, unframedPacket.payload)
-/*
-	  if (packet.length > 17) {
-	    payload = packet.slice(17);
-	    schema.Parse(payload, 'EventStore.Client.Messages.' + command)
-	  }
-	  */
-  } else if (data.length >= expectedPacketLength) {
-    console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + data.length + " bytes)");
-    this._onData(packet.slice(0, expectedPacketLength));
-    this._onData(packet.slice(expectedPacketLength));
-  } else {
-    console.log("Crap, the packet isn't big enough. Maybe there's another packet coming? (wanted: " + expectedPacketLength + " bytes, got: " + data.length + " bytes)");
-    _leftoverPacketData = data;
-  }
-})
+client.on('data', receiveMessage)
 
 client.on('end', function() {
   console.log('client disconnected')
 })
 
-function sendMessage(messageName, correlationId, payload, auth) {
-	var packet = framer.frame(messageName, correlationId, payload, auth)
-
-  console.log("Sending " + messageName + " message with correlation id: " + correlationId)
-
-  client.write(packet)
-}
