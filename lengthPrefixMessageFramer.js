@@ -9,6 +9,8 @@ var uuid = require('node-uuid')
 
 module.exports = {
 	frame: frameMessage
+, getContentLength: getContentLength
+, unframe: unframe
 }
 
 
@@ -46,4 +48,17 @@ function frameMessage(messageName, correlationId, payload, auth) {
   }
 
   return packet
+}
+
+function getContentLength(packet) {
+	return packet.readUInt32LE(0);
+}
+
+function unframe(packet) {
+  return {
+  	command: messages(packet.readUInt8(commandOffset))
+	, flag: flags(packet.readUInt8(flagOffset))
+	, correlationId: uuid.unparse(packet, correlationIdOffset)
+	, payload: packet.slice(authOffset)
+	}
 }

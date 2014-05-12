@@ -46,20 +46,20 @@ client.on('data', function(data) {
     _leftoverPacketData = null;
   }
 
-  var contentLength = data.readUInt32LE(0);
+  var contentLength = framer.getContentLength(data)
   var expectedPacketLength = contentLength + 4;
   if (data.length === expectedPacketLength) {
-		var packet = data.slice(4)
-    var command = commands(packet.readUInt8(0));
-    var flag = flags(packet.readUInt8(1))
-	  var correlationId = uuid.unparse(packet, 2);
-	  var payload = packet.slice(18)
-	  console.log("Received " + command + " command with flag: " + flag + " and correlation id: " + correlationId);
+  	var unframedPacket = framer.unframe(data)
+	  	, handler = commandHandlers[unframedPacket.command]
+	  	
+	  console.log("Received " + unframedPacket.command
+	  	+ " command with flag: " + unframedPacket.flag
+	  	+ " and correlation id: " + unframedPacket.correlationId
+  	)
 
-	  var handler = commandHandlers[command]
 	  if(!handler) return
 
-	  return handler(correlationId, payload)
+	  handler(unframedPacket.correlationId, unframedPacket.payload)
 /*
 	  if (packet.length > 17) {
 	    payload = packet.slice(17);
