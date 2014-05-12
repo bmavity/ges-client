@@ -1,15 +1,23 @@
-var fs = require('fs')
-	, path = require('path')
-	, uuid = require('node-uuid')
-	//, Schema = require('protobuf').Schema
-	//, schema = new Schema(fs.readFileSync(path.resolve(__dirname, 'ges_client.desc')))
-	, Schema = require('node-protobuf').Protobuf
-	, schema = new Schema(fs.readFileSync(path.resolve(__dirname, 'ges_client.desc')))
+var uuid = require('node-uuid')
+	, parser = require('./messageParser')
 	, commands = require('./tcp_commands')
 	, flags = require('./tcp_flags')
 	, commandHandlers = {
 			'HeartbeatRequestCommand': function(correlationId) {
 		  	sendMessage('HeartbeatResponseCommand', correlationId)
+			}
+		, 'ReadAllEventsForwardCompleted': function(correlationId, payload) {
+				var a = parser.parse('ReadAllEventsCompleted', payload)
+		  	return console.log(a.events
+		  		.filter(function(evt) {
+		  			return evt.event.event_type.indexOf('$') !== 0
+		  		})
+		  		.map(function(evts) {
+			  		var evt = evts.event
+			  		evt.data = JSON.parse(evt.data.toString())
+			  		evt.metadata = JSON.parse(evt.metadata.toString())
+			  		return evt
+		  	}))
 			}
 		}
 
@@ -17,16 +25,14 @@ var fs = require('fs')
 var net = require('net')
 var client = net.connect(1113, '127.0.0.1', function() { 
   console.log('client connected')
-  
-  var payload = schema.Serialize({
-				commit_position: 0
-			, prepare_position: 0
-			, max_count: 1000
-			, resolve_link_tos: false
-			, require_master: false
-			}, 'EventStore.Client.Messages.ReadAllEvents')
-  sendAuthenticated('ReadAllEventsForward', payload)
-  console.log(schema.Parse(payload, 'EventStore.Client.Messages.ReadAllEvents'))
+			
+  sendAuthenticated('ReadAllEventsForward', parser.serialize('ReadAllEvents', {
+		commit_position: 0
+	, prepare_position: 0
+	, max_count: 1000
+	, resolve_link_tos: false
+	, require_master: false
+	}))
 })
 
 var _leftoverPacketData
@@ -53,28 +59,12 @@ client.on('data', function(data) {
 	  if(!handler) return
 
 	  return handler(correlationId, payload)
-	
-	  if(command === 'HeartbeatRequestCommand') {
-	  } else if(command === 'ReadAllEventsForwardCompleted') {
-	    var a = schema.Parse(payload, 'EventStore.Client.Messages.' + 'ReadAllEventsCompleted')
-	  	return console.log(a.events
-	  		.filter(function(evt) {
-	  			return evt.event.event_type.indexOf('$') !== 0
-	  		})
-	  		.map(function(evts) {
-		  		var evt = evts.event
-		  		evt.data = JSON.parse(evt.data.toString())
-		  		evt.metadata = JSON.parse(evt.metadata.toString())
-		  		return evt
-	  	}))
-	  } else {
-	  	return
-	  }
-	  
+/*
 	  if (packet.length > 17) {
 	    payload = packet.slice(17);
 	    schema.Parse(payload, 'EventStore.Client.Messages.' + command)
 	  }
+	  */
   } else if (data.length >= expectedPacketLength) {
     console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + data.length + " bytes)");
     this._onData(packet.slice(0, expectedPacketLength));
