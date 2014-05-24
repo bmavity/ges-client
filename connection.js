@@ -1,4 +1,6 @@
 var net = require('net')
+	, Readable = require('stream').Readable
+	, util = require('util')
 	, uuid = require('node-uuid')
 	, parser = require('./messageParser')
 	, framer = require('./lengthPrefixMessageFramer')
@@ -8,39 +10,124 @@ var net = require('net')
 			}
 		, 'ReadAllEventsForwardCompleted': function(correlationId, payload) {
 				var a = parser.parse('ReadAllEventsCompleted', payload)
-		  	return console.log(a.events
-		  		.filter(function(evt) {
-		  			return evt.event.event_type.indexOf('$') !== 0
-		  		})
-		  		.map(function(evts) {
-			  		var evt = evts.event
-			  		evt.data = JSON.parse(evt.data.toString())
-			  		evt.metadata = JSON.parse(evt.metadata.toString())
-			  		return evt
-		  	}))
+		  		, events = a.events
+				  		.filter(isClientEvent)
+				  		.map(parseEventStoreEvent)
+				stream.addEvents(events)
 			}
 		}
 	, incompletePacket
 	, client
+	, stream
 
 module.exports = connect
 
+function EventStream() {
+	Readable.call(this, {
+		objectMode: true
+	})
+
+	this._es = []
+	this_hasStarted = false
+}
+util.inherits(EventStream, Readable)
+
+EventStream.prototype._read = function() {
+	console.log('in _read')
+
+	if(this._hasStarted && !this._es.length) {
+		this.push(null)
+	}
+}
+
+EventStream.prototype.writeEvents = function() {
+	var evt = this._es.shift()
+
+	while(evt && this.push(evt)) {
+		evt = this._es.shift()
+	}
+}
+
+EventStream.prototype.addEvents = function(events) {
+	this._es = this._es.concat(events)
+	this._hasStarted = true
+	this.writeEvents()
+}
+
+function isClientEvent(evt) {
+	return evt.event.event_type.indexOf('$') !== 0
+}
+ 
+function parseEventStoreEvent(rawEvent) {
+	var evt = rawEvent.event
+	evt.event_id = uuid.unparse(evt.event_id)
+	evt.data = JSON.parse(evt.data.toString())
+	evt.metadata = JSON.parse(evt.metadata.toString())
+	return evt
+}
+
+function Connection() {
+}
+
+function EventStream2() {
+	Readable.call(this, {
+		objectMode: true
+	})
+
+	this._es = [ { a: 1 }, { b: 2 }]
+}
+util.inherits(EventStream2, Readable)
+
+EventStream2.prototype._read = function() {
+	console.log('in _read')
+	var s = this
+
+	setTimeout(function() {
+		s.addEvents()
+		s.writeEvents()
+
+		s.push(null)	
+	}, 1000)
+}
+
+EventStream2.prototype.addEvents = function() {
+	this._events2 = this._events2.concat([ { a: 1 }, { b: 2 } ])
+	console.log('in add', this._events2)
+	this._hasStarted = true
+}
+
+EventStream2.prototype.writeEvents = function() {
+	var evt = this._events2.shift()
+
+	while(evt && this.push(evt)) {
+		evt = this._events2.shift()
+	}
+}
+
+
+Connection.prototype.readAllEventsForward = function() {
+	stream = new EventStream()
+  sendMessage('ReadAllEventsForward', uuid.v4(), parser.serialize('ReadAllEvents', {
+		commit_position: 0
+	, prepare_position: 0
+	, max_count: 1000
+	, resolve_link_tos: false
+	, require_master: false
+	}), true)
+	return stream //new EventStream2()
+}
 
 function connect(cb) {
+	if(client) {
+		return setImmediate(function() {
+			cb(null, client)
+		})
+	}
+
 	client = net.connect(1113, '127.0.0.1', function() { 
 	  console.log('client connected')
 				
-		cb(null, {
-			readAllEventsForward: function() {
-			  sendMessage('ReadAllEventsForward', uuid.v4(), parser.serialize('ReadAllEvents', {
-					commit_position: 0
-				, prepare_position: 0
-				, max_count: 1000
-				, resolve_link_tos: false
-				, require_master: false
-				}), true)
-			}
-		})
+		cb(null, new Connection())
 	})
 
 	client.on('data', receiveMessage)
@@ -73,7 +160,7 @@ function handleCompletePacket(packet) {
 }
 
 function handleIncompletePacket(packet, expectedPacketLength) {
-  console.log('Incomplete Packet (wanted: ' + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
+  //console.log('Incomplete Packet (wanted: ' + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
 	incompletePacket = packet
 }
 
