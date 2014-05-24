@@ -69,41 +69,6 @@ function parseEventStoreEvent(rawEvent) {
 function Connection() {
 }
 
-function EventStream2() {
-	Readable.call(this, {
-		objectMode: true
-	})
-
-	this._es = [ { a: 1 }, { b: 2 }]
-}
-util.inherits(EventStream2, Readable)
-
-EventStream2.prototype._read = function() {
-	console.log('in _read')
-	var s = this
-
-	setTimeout(function() {
-		s.addEvents()
-		s.writeEvents()
-
-		s.push(null)	
-	}, 1000)
-}
-
-EventStream2.prototype.addEvents = function() {
-	this._events2 = this._events2.concat([ { a: 1 }, { b: 2 } ])
-	console.log('in add', this._events2)
-	this._hasStarted = true
-}
-
-EventStream2.prototype.writeEvents = function() {
-	var evt = this._events2.shift()
-
-	while(evt && this.push(evt)) {
-		evt = this._events2.shift()
-	}
-}
-
 
 Connection.prototype.readAllEventsForward = function() {
 	stream = new EventStream()
@@ -114,7 +79,7 @@ Connection.prototype.readAllEventsForward = function() {
 	, resolve_link_tos: false
 	, require_master: false
 	}), true)
-	return stream //new EventStream2()
+	return stream
 }
 
 function connect(cb) {
