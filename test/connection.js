@@ -8,15 +8,11 @@ describe('ges-client, when invoked without connection args', function() {
 	before(function(done) {
 		es = memoryEs()
 
-		client(function(err, con) {
-			if(err) return done(err)
-			
-			connection = con
-			done()
-		})
+		connection = client()
+		done()
 	})
 
-  it('should produce a connection', function() {
+  it('should create a connection', function() {
   	(!!connection).should.be.true
   })
 

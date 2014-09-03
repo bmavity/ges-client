@@ -1,5 +1,6 @@
 var net = require('net')
 	, Readable = require('stream').Readable
+	, EventEmitter = require('events').EventEmitter
 	, util = require('util')
 	, uuid = require('node-uuid')
 	, parser = require('./messageParser')
@@ -20,7 +21,15 @@ var net = require('net')
 	, client
 	, stream
 
-module.exports = connect
+module.exports = createConnection
+
+
+function createConnection() {
+	var socket = net.connect(1113, '127.0.0.1')
+
+	return new Connection(socket)
+}
+
 
 function EventStream() {
 	Readable.call(this, {
@@ -66,8 +75,17 @@ function parseEventStoreEvent(rawEvent) {
 	return evt
 }
 
-function Connection() {
+function Connection(socket) {
+	EventEmitter.call(this)
+/*
+	socket.on('data', receiveMessage)
+
+	socket.on('end', function() {
+	  console.log('client disconnected')
+	})
+*/
 }
+util.inherits(Connection, EventEmitter)
 
 Connection.prototype.appendToStream = function(streamName, events, cb) {
 	sendMessage('WriteEvents', uuid.v4(), parser.serialize('WriteEvents', {
@@ -94,24 +112,6 @@ Connection.prototype.readAllEventsForward = function() {
 	, require_master: false
 	}), true)
 	return stream
-}
-
-function connect(cb) {
-	if(client) {
-		return setImmediate(function() {
-			cb(null, client)
-		})
-	}
-
-	client = net.connect(1113, '127.0.0.1', function() { 
-		cb(null, new Connection())
-	})
-
-	client.on('data', receiveMessage)
-
-	client.on('end', function() {
-	  console.log('client disconnected')
-	})
 }
 
 function combineWithIncompletePacket(packet) {
