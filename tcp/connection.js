@@ -69,6 +69,20 @@ function parseEventStoreEvent(rawEvent) {
 function Connection() {
 }
 
+Connection.prototype.appendToStream = function(streamName, events, cb) {
+	sendMessage('WriteEvents', uuid.v4(), parser.serialize('WriteEvents', {
+		event_stream_id: streamName
+	, expected_version: 0
+	, events: []
+	, require_master: true
+	}))
+}
+
+function toEventStoreEvent(evt) {
+	return {
+		
+	}
+}
 
 Connection.prototype.readAllEventsForward = function() {
 	stream = new EventStream()
