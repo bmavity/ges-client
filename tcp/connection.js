@@ -24,8 +24,11 @@ var net = require('net')
 module.exports = createConnection
 
 
-function createConnection() {
-	var socket = net.connect(1113, '127.0.0.1')
+function createConnection(opts) {
+	opts = opts || {}
+	opts.host = opts.host || '127.0.0.1'
+	opts.port = opts.port || 1113
+	var socket = net.connect(opts.port, opts.host)
 
 	return new Connection(socket)
 }
@@ -81,7 +84,11 @@ function Connection(socket) {
 	var me = this
 
 	socket.on('connect', function() {
-		me.emit.apply(me, ['connect'].concat(arguments))
+		me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
+	})
+
+	socket.on('error', function() {
+		me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
 	})
 /*
 	socket.on('data', receiveMessage)

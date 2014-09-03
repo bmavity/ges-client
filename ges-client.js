@@ -3,6 +3,6 @@ var tcpConnect = require('./tcp/connection')
 module.exports = createConnection
 
 
-function createConnection() {
-	return tcpConnect()
+function createConnection(opts) {
+	return tcpConnect(opts)
 }

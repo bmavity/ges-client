@@ -23,7 +23,7 @@
     "node": "0.10.x"
   },
   "scripts": {
-    "test": "mocha -r should -R tap test/**/*.js",
+    "test": "mocha -r should -R tap -t 10s test/**/*.js",
     "watch": "mocha -w -r should -R spec test/**/*.js"
   },
   "keywords": [],
