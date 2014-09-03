@@ -104,8 +104,6 @@ function connect(cb) {
 	}
 
 	client = net.connect(1113, '127.0.0.1', function() { 
-	  console.log('client connected')
-				
 		cb(null, new Connection())
 	})
 
