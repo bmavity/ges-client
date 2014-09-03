@@ -1,3 +1,4 @@
+return
 var uuid = require('node-uuid')
 	, appender = require('../ges-appender')
 	, events = [{

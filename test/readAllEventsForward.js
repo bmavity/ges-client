@@ -1,3 +1,4 @@
+return
 var ges = require('../')
 	, util = require('util')
 	, Writable = require('stream').Writable
