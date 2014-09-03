@@ -1,5 +1,5 @@
 {
-  "name": "get-client"
+  "name": "ges-client"
 , "author": "Brian Mavity <brian@brianmavity.com> (http://www.brianmavity.com)"
 , "repository": {
     "type": "git",
@@ -24,5 +24,5 @@
   ]
 , "license": "MIT +no-false-attribs, +no-advertising License"
 , "main": "./connection.js"
-, "version": "0.0.1"
+, "version": "0.1.0"
 }
