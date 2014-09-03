@@ -77,6 +77,12 @@ function parseEventStoreEvent(rawEvent) {
 
 function Connection(socket) {
 	EventEmitter.call(this)
+
+	var me = this
+
+	socket.on('connect', function() {
+		me.emit.apply(me, ['connect'].concat(arguments))
+	})
 /*
 	socket.on('data', receiveMessage)
 
