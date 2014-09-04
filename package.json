@@ -1,28 +1,37 @@
 {
-  "name": "get-client"
-, "author": "Brian Mavity <brian@brianmavity.com> (http://www.brianmavity.com)"
-, "repository": {
+  "name": "ges-client",
+  "author": "Brian Mavity <brian@brianmavity.com> (http://www.brianmavity.com)",
+  "repository": {
     "type": "git",
     "url": "git://github.com/bmavity/ges-client.git"
-  }
-, "bugs": {
+  },
+  "bugs": {
     "url": "https://github.com/bmavity/ges-client/issues"
-  }
-, "contributors": [
+  },
+  "contributors": [
     "Brian Mavity <brian@brianmavity.com> (http://www.brianmavity.com)"
-  ]
-, "description": "(Get) EventStore Client"
-, "dependencies": {
-		"request": "2.34.x"
-  }
-, "devDependencies": {
-  }
-, "engines": {
+  ],
+  "description": "(Get) EventStore Client",
+  "dependencies": {
+    "is": "^2.0.1",
+    "node-protobuf": "^1.2.0",
+    "node-uuid": "^1.4.1",
+    "request": "2.34.x"
+  },
+  "devDependencies": {
+    "mocha": "^1.21.4",
+    "should": "^4.0.4",
+    "ges-test-helper": "^0.1.1"
+  },
+  "engines": {
     "node": "0.10.x"
-  }
-, "keywords": [
-  ]
-, "license": "MIT +no-false-attribs, +no-advertising License"
-, "main": "./ges-client.js"
-, "version": "0.0.1"
+  },
+  "scripts": {
+    "test": "mocha -r should -R tap -t 10s test/**/*.js",
+    "watch": "mocha -w -r should -R spec test/**/*.js"
+  },
+  "keywords": [],
+  "license": "MIT +no-false-attribs, +no-advertising License",
+  "main": "./ges-client.js",
+  "version": "0.1.0"
 }

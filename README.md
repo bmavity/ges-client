@@ -1,28 +1,65 @@
-# get-client
+ges-client
+=======
 
-A client library for (Get) Event Store [http://geteventstore.com]
+**A client library for [(Get) Event Store](http://geteventstore.com)**
 
-## Modified MIT License
-Copyright (c) 2010 Brian Mavity 
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+[![Build Status](https://secure.travis-ci.org/bmavity/ges-client.svg)](http://travis-ci.org/bmavity/ges-client)
 
-Except as contained in this notice, the name(s) of the above copyright
-holders shall not be used in advertising or otherwise to promote the sale,
-use or other dealings in this Software without prior written authorization.
+[![NPM](https://nodei.co/npm/ges-client.png?stars&downloads&downloadRank)](https://nodei.co/npm/ges-client/) [![NPM](https://nodei.co/npm-dl/ges-client.png?months=6&height=3)](https://nodei.co/npm/ges-client/)
 
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+  * <a href="#intro">Introduction</a>
+  * <a href="#basic">Basic usage</a>
+  * <a href="#licence">Licence &amp; copyright</a>
+
+<a name="intro"></a>
+Introduction
+------------
+
+This client assumes that you already have an [Event Store](http://geteventstore.com) instance running.
+
+<a name="basic"></a>
+Basic usage
+-----------
+
+Install
+
+```sh
+$ npm install ges-client
+```
+
+Read from an event stream
+
+```js
+var ges = require('ges-client')
+
+// 1) Create a connection to a running EventStore
+//    using default connection options and credentials
+var es = ges()
+
+// 2) 
+var thingsThatHappened = [array of events]
+es.appendToStream('intro-events', thingsThatHappened, function (err) {
+  if (err) return console.log('Ooops!', err) // connection error
+
+  // 3) Read all events from the stream
+  es.readStreamForward('intro-events', function (err, events) {
+    if (err) return console.log('Ooops!', err) // connection error or stream does not exist
+
+    // ta da!
+    console.log(events)
+  })
+})
+```
+
+<a name="license"></a>
+License &amp; copyright
+-------------------
+
+Copyright (c) 2014 Brian Mavity.
+
+ges-client is licensed under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
+
+
+
