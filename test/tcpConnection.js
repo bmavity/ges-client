@@ -66,3 +66,42 @@ describe('ges-client, when invoked with incorrect connection args', function() {
   	done()
   })
 })
+
+
+describe('ges-client, when connected', function() {
+	this.timeout(15000)
+
+	var connection
+		, es
+		, wasOpenFor20Seconds = false
+
+	before(function(done) {
+		memoryEs({ tcpPort: 4567 }, function(err, memory) {
+			if(err) return done(err)
+
+			es = memory
+			connection = client({ port: 4567 })
+
+			connection.on('connect', function() {
+				setTimeout(function() {
+					wasOpenFor20Seconds = true
+					done()
+				}, 8000)
+			})
+
+			connection.on('error', done)
+		})
+	})
+
+  it('should not disconnect', function() {
+  	wasOpenFor20Seconds.should.be.true
+  })
+
+  after(function(done) {
+  	es.on('exit', function(code, signal) {
+  		console.log('Exited with ', code, signal)
+	  	done()
+  	})
+  	es.kill()
+  })
+})

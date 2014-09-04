@@ -2,12 +2,15 @@ var net = require('net')
 	, EventEmitter = require('events').EventEmitter
 	, util = require('util')
 	, uuid = require('node-uuid')
-	, tcpPayloadParser = require('./tcpPayloadParser')
+	, messageReceiver = require('./messageReceiver')
+	, messageSender = require('./messageSender')
 	, parser = require('./messageParser')
-	, framer = require('./lengthPrefixMessageFramer')
 	, commandHandlers = {
 			'HeartbeatRequestCommand': function(correlationId) {
-		  	sendMessage('HeartbeatResponseCommand', correlationId)
+				return {
+					messageName: 'HeartbeatResponseCommand'
+				, correlationId: correlationId
+				}
 			}
 		, 'ReadAllEventsForwardCompleted': function(correlationId, payload) {
 				var a = parser.parse('ReadAllEventsCompleted', payload)
@@ -35,7 +38,8 @@ function EsTcpConnection(socket) {
 	EventEmitter.call(this)
 
 	var me = this
-		, payloadParser = tcpPayloadParser(socket)
+		, receiver = messageReceiver(socket)
+		, sender = messageSender(socket)
 
 	socket.on('connect', function() {
 		me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
@@ -45,12 +49,16 @@ function EsTcpConnection(socket) {
 		me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
 	})
 
-	payloadParser.on('message', function(message) {
-  	var handler = commandHandlers[message.command]
+	receiver.on('message', function(message) {
+  	var handler = commandHandlers[message.messageName]
 	  if(!handler) return
-	  handler(message.correlationId, message.payload)
+	  
+	  var toSend = handler(message.correlationId, message.payload)
+		if(toSend) {
+			sender.send(toSend)
+		}
 		/*
-		  console.log("Received " + unframedPacket.command
+		  console.log("Received " + unframedPacket.messageName
 		  	+ " command with flag: " + unframedPacket.flag
 		  	+ " and correlation id: " + unframedPacket.correlationId
 			)
@@ -75,11 +83,5 @@ EsTcpConnection.prototype.appendToStream = function(streamName, events, cb) {
 	}))
 }
 
-EsTcpConnection.prototype.sendMessage = function(messageName, correlationId, payload, auth) {
-	var packet = framer.frame(messageName, correlationId, payload, auth)
 
-  console.log("Sending " + messageName + " message with correlation id: " + correlationId)
-
-  this._socket.write(packet)
-}
 

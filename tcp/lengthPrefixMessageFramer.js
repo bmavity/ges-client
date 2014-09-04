@@ -56,7 +56,7 @@ function getContentLength(packet) {
 
 function unframe(packet) {
   return {
-  	command: messages(packet.readUInt8(commandOffset))
+  	messageName: messages(packet.readUInt8(commandOffset))
 	, flag: flags(packet.readUInt8(flagOffset))
 	, correlationId: uuid.unparse(packet, correlationIdOffset)
 	, payload: packet.slice(authOffset)
