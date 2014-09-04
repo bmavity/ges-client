@@ -5,6 +5,7 @@ before_install:
   - sudo apt-get install -qq libprotobuf-dev
   - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.0-rc9.tar.gz -O /tmp/EventStore.tar.gz
   - tar -xvf /tmp/EventStore.tar.gz
+  - ls /tmp
   - export ES_BIN=/tmp/EventStore-OSS-Linux-v3.0.0-rc9
 
 node_js:
