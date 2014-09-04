@@ -1,6 +1,6 @@
 var fs = require('fs')
 	, path = require('path')
-	, Schema = require('node-protobuf').Protobuf
+	, Schema = require('node-protobuf')
 	, schema = new Schema(fs.readFileSync(path.resolve(__dirname, 'ges_client.desc')))
 	, messageNamespace = 'EventStore.Client.Messages.' 
 
