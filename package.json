@@ -28,7 +28,7 @@
   },
   "scripts": {
     "test": "mocha -r should -R tap -t 10s test/**/*.js",
-    "watch": "mocha -w -r should -R spec test/**/*.js"
+    "watch": "mocha -w -r should -R spec -t 10s test/**/*.js"
   },
   "keywords": [],
   "license": "MIT +no-false-attribs, +no-advertising License",
