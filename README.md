@@ -1,7 +1,7 @@
 ges-client
 =======
 
-**A client library for [(Get) Event Store](http://geteventstore.com)**
+**A nodejs client library for [(Get) Event Store](http://geteventstore.com)**
 
 
 [![Build Status](https://secure.travis-ci.org/bmavity/ges-client.svg)](http://travis-ci.org/bmavity/ges-client)
