@@ -1,5 +1,5 @@
 var client = require('../')
-	, memoryEs = require('./inMemoryEs')
+	, memoryEs = require('ges-test-helper')
 
 describe('ges-client, when invoked without connection args', function() {
 	var connection
