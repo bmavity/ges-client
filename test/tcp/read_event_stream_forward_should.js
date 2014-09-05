@@ -98,22 +98,3 @@ describe('read event stream forward should', function() {
   })
 })
 
-
-		var events = [{
-					EventId: uuid.v4()
-				, EventType: 'FirstEvent'
-				, Data: { hi: 'bye' }
-				, Metadata: { metaHi: 'metaBye' }
-				}
-			, {
-					EventId: uuid.v4()
-				, EventType: 'FirstEvent'
-				, Data: { hi: 'everything' }
-				, Metadata: { metaHi: 'meta meta everything' }
-				}
-			, {
-					EventId: uuid.v4()
-				, EventType: 'AnotherEvent'
-				, Data: { total: 5 }
-				, Metadata: { happened: '07/05/1973' }
-			}]

@@ -22,21 +22,38 @@ var net = require('net')
 		, 'ReadStreamEventsForwardCompleted': function(correlationId, payload, cb) {
 				payload = parser.parse('ReadStreamEventsCompleted', payload)
 
+				/*
+					public readonly SliceReadStatus Status;
+				  public readonly string Stream;
+				  public readonly int FromEventNumber;
+				  public readonly ReadDirection ReadDirection;
+				  public readonly ResolvedEvent[] Events;
+				  public readonly int NextEventNumber;
+				  public readonly int LastEventNumber;
+				  public readonly bool IsEndOfStream;
+				*/
+
 				cb(null, {
 					Status: payload.result
-				, Events: []
+				, Events: payload.events.map(fromEventStoreEvent)
 				})
 			}
 		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
 				payload = parser.parse('WriteEventsCompleted', payload)
+
 				if(payload.result === 'WrongExpectedVersion') {
 					return cb(new Error(payload.message))
 				}
+
+				var hasCommitPosition = payload.commit_position || payload.commit_position === 0
+					, hasPreparePosition = payload.prepare_position || payload.prepare_position === 0
+
+				//console.log(payload)
 				cb(null, {
 					NextExpectedVersion: payload.last_event_number
 				, LogPosition: {
-						CommitPosition: payload.hasOwnProperty('commit_position') ? payload.commit_position : -1
-					, PreparePosition: payload.hasOwnProperty('prepare_position') ? payload.prepare_position : -1
+						CommitPosition: hasCommitPosition ? payload.commit_position : -1
+					, PreparePosition: hasPreparePosition ? payload.prepare_position : -1
 					}
 				})
 			}
@@ -90,7 +107,7 @@ function EsTcpConnection(socket) {
 	})
 
 	receiver.on('message', function(message) {
-		console.log('Received message: ', message.messageName)
+		//console.log('Received message: ', message.messageName)
   	var handler = commandHandlers[message.messageName]
 	  if(!handler) return
 	  
@@ -115,7 +132,15 @@ function EsTcpConnection(socket) {
 }
 util.inherits(EsTcpConnection, EventEmitter)
 
-EsTcpConnection.prototype.appendToStream = function(streamName, events, expectedVersion, cb) {
+EsTcpConnection.prototype.appendToStream = function(streamName, expectedVersion, events, cb) {
+	if(!cb && typeof events === 'function') {
+		cb = events
+		events = []
+	}
+	if(!Array.isArray(events)) {
+		events = [ events ]
+	}
+
   var correlationId = uuid.v4()
 	this._storeCallback(correlationId, cb)
 
@@ -204,6 +229,33 @@ function toEventStoreEvent(evt) {
 	, data: new Buffer(JSON.stringify(evt.Data))
 	, metadata: new Buffer(JSON.stringify(evt.Metadata))
 	}
+}
+
+function fromEventStoreEvent(rawEvent) {
+	/*
+	required EventRecord event = 1;
+	optional EventRecord link = 2;
+	*/
+	return {
+		Event: toRecordedEvent(rawEvent.event)
+	, Link: rawEvent.link ? toRecordedEvent(rawEvent.link) : null
+	}
+}
+
+function toRecordedEvent(rawEvent) {
+	/*
+	required string event_stream_id = 1;
+	required int32 event_number = 2;
+	required bytes event_id = 3;
+	required string event_type = 4;
+	required int32 data_content_type = 5;
+	required int32 metadata_content_type = 6;
+	required bytes data = 7;
+	optional bytes metadata = 8;
+	optional int64 created = 9;
+	optional int64 created_epoch = 10;
+	*/
+	return {}
 }
 
 
