@@ -5,6 +5,7 @@ describe('ges-client, when invoked without connection args', function() {
 	var connection
 		, es
 		, isConnected = false
+		, isDone = false
 
 	before(function(done) {
 		memoryEs(function(err, memory) {
@@ -13,12 +14,19 @@ describe('ges-client, when invoked without connection args', function() {
 			es = memory
 			connection = client()
 
+	  	es.on('error', console.log)
 			connection.on('connect', function() {
 				isConnected = true
+				isDone = true
 				done()
 			})
 
-			connection.on('error', done)
+			connection.on('error', function() {
+				if(!isDone) {
+					isDone = true
+					done()
+				}
+			})
 		})
 	})
 
@@ -35,6 +43,7 @@ describe('ges-client, when invoked without connection args', function() {
   		console.log('Exited with ', code, signal)
 	  	done()
   	})
+  	es.on('error', console.log)
   	es.kill()
   })
 })
