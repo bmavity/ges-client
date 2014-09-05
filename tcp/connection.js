@@ -19,6 +19,16 @@ var net = require('net')
 				  		.map(parseEventStoreEvent)
 				cb(null, events)
 			}
+		, 'ReadStreamEventsForwardCompleted': function(correlationId, payload, cb) {
+				payload = parser.parse('ReadStreamEventsCompleted', payload)
+				if(payload.result === 'NoStream') {
+					return cb(new Error(payload.result))
+				}
+
+				cb(null, {
+
+				})
+			}
 		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
 				payload = parser.parse('WriteEventsCompleted', payload)
 				if(payload.result === 'WrongExpectedVersion') {
@@ -141,6 +151,27 @@ EsTcpConnection.prototype.readAllEventsForward = function(cb) {
 			, max_count: 1000
 			, resolve_link_tos: false
 			, require_master: false
+			}
+		}
+	})
+}
+
+
+EsTcpConnection.prototype.readStreamEventsForward = function(streamName, options, cb) {
+  var correlationId = uuid.v4()
+	this._storeCallback(correlationId, cb)
+
+  this._sender.send({
+  	messageName: 'ReadStreamEventsForward'
+  , correlationId: correlationId
+  , payload: {
+  		name: 'ReadStreamEvents'
+  	, data: {
+				event_stream_id: streamName
+			, from_event_number: options.start
+			, max_count: options.count
+			, resolve_link_tos: !!options.resolveLinkTos
+			, require_master: !!options.requireMaster
 			}
 		}
 	})
