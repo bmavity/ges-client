@@ -24,6 +24,7 @@ var net = require('net')
 
 				cb(null, {
 					Status: payload.result
+				, Events: []
 				})
 			}
 		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
