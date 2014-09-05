@@ -21,12 +21,9 @@ var net = require('net')
 			}
 		, 'ReadStreamEventsForwardCompleted': function(correlationId, payload, cb) {
 				payload = parser.parse('ReadStreamEventsCompleted', payload)
-				if(payload.result === 'NoStream') {
-					return cb(new Error(payload.result))
-				}
 
 				cb(null, {
-
+					Status: payload.result
 				})
 			}
 		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
@@ -158,6 +155,18 @@ EsTcpConnection.prototype.readAllEventsForward = function(cb) {
 
 
 EsTcpConnection.prototype.readStreamEventsForward = function(streamName, options, cb) {
+	if(options.start < 0) {
+		setImmediate(function() {
+			cb(new Error('Argument: start must be non-negative.'))
+		})
+		return
+	}
+	if(options.count <= 0) {
+		setImmediate(function() {
+			cb(new Error('Argument: count must be positive.'))
+		})
+		return
+	}
   var correlationId = uuid.v4()
 	this._storeCallback(correlationId, cb)
 
