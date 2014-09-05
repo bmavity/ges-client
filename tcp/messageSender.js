@@ -19,8 +19,13 @@ util.inherits(TcpMessageSender, EventEmitter)
 
 
 TcpMessageSender.prototype.send = function(sendArgs) {
-	var payload, auth
-	var packet = framer.frame(sendArgs.messageName, sendArgs.correlationId, payload, auth)
+	var payload
+	if(sendArgs.payload) {
+		console.log(sendArgs.payload.data)
+		payload = parser.serialize(sendArgs.payload.name, sendArgs.payload.data)
+	}
+
+	var packet = framer.frame(sendArgs.messageName, sendArgs.correlationId, payload, sendArgs.auth)
 
   console.log("Sending " + sendArgs.messageName + " message with correlation id: " + sendArgs.correlationId)
 

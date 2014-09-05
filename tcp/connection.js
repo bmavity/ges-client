@@ -12,14 +12,40 @@ var net = require('net')
 				, correlationId: correlationId
 				}
 			}
-		, 'ReadAllEventsForwardCompleted': function(correlationId, payload) {
+		, 'ReadAllEventsForwardCompleted': function(correlationId, payload, cb) {
 				var a = parser.parse('ReadAllEventsCompleted', payload)
 		  		, events = a.events
 				  		.filter(isClientEvent)
 				  		.map(parseEventStoreEvent)
-				stream.addEvents(events)
+				cb(null, events)
+			}
+		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
+				payload = parser.parse('WriteEventsCompleted', payload)
+				if(payload.result === 'WrongExpectedVersion') {
+					return cb(new Error(payload.message))
+				}
+				cb(null, payload)
+			}
+		, 'BadRequest': function(correlationId, payload, cb) {
+				cb(new Error(payload.toString()))
+			}
+		, 'NotHandled': function(correlationId, payload, cb) {
+				payload = parser.parse('NotHandled', payload)
+				cb(new Error(payload.reason))
 			}
 		}
+
+function isClientEvent(evt) {
+	return evt.event.event_type.indexOf('$') !== 0
+}
+ 
+function parseEventStoreEvent(rawEvent) {
+	var evt = rawEvent.event
+	evt.event_id = uuid.unparse(evt.event_id)
+	evt.data = JSON.parse(evt.data.toString())
+	evt.metadata = JSON.parse(evt.metadata.toString())
+	return evt
+}
 
 module.exports = createConnection
 
@@ -50,19 +76,19 @@ function EsTcpConnection(socket) {
 	})
 
 	receiver.on('message', function(message) {
+		console.log('Received message: ', message.messageName)
   	var handler = commandHandlers[message.messageName]
 	  if(!handler) return
 	  
-	  var toSend = handler(message.correlationId, message.payload)
+	  var correlationId = message.correlationId
+			, waitingCallback = me._callbacks[correlationId]
+			, toSend = handler(correlationId, message.payload, waitingCallback)
 		if(toSend) {
 			sender.send(toSend)
 		}
-		/*
-		  console.log("Received " + unframedPacket.messageName
-		  	+ " command with flag: " + unframedPacket.flag
-		  	+ " and correlation id: " + unframedPacket.correlationId
-			)
-		*/
+		if(waitingCallback) {
+			delete me._callbacks[correlationId]
+		}
 	})
 /*
 	socket.on('end', function() {
@@ -70,18 +96,71 @@ function EsTcpConnection(socket) {
 	})
 */
 
-	this._socket = socket
+	this._sender = sender
+	this._callbacks = {}
 }
 util.inherits(EsTcpConnection, EventEmitter)
 
 EsTcpConnection.prototype.appendToStream = function(streamName, events, cb) {
-	this.sendMessage('WriteEvents', uuid.v4(), parser.serialize('WriteEvents', {
-		event_stream_id: streamName
-	, expected_version: 0
-	, events: []
-	, require_master: true
-	}))
+  var correlationId = uuid.v4()
+	this._storeCallback(correlationId, cb)
+
+	this._sender.send({
+		messageName: 'WriteEvents'
+	, correlationId: correlationId
+	, payload: {
+			name: 'WriteEvents'
+		, data: {
+				event_stream_id: streamName
+			, expected_version: 0
+			, events: events.map(toEventStoreEvent)
+			, require_master: true
+			}
+		}
+	})
+}
+
+EsTcpConnection.prototype.readAllEventsForward = function(cb) {
+  var correlationId = uuid.v4()
+	this._storeCallback(correlationId, cb)
+
+  this._sender.send({
+  	messageName: 'ReadAllEventsForward'
+  , correlationId: correlationId
+  , payload: {
+  		name: 'ReadAllEvents'
+  	, data: {
+				commit_position: 0
+			, prepare_position: 0
+			, max_count: 1000
+			, resolve_link_tos: false
+			, require_master: false
+			}
+		}
+	})
+}
+
+function toEventStoreEvent(evt) {
+	/*
+	required bytes event_id = 1;
+	required string event_type = 2;
+	required int32 data_content_type = 3;
+	required int32 metadata_content_type = 4;
+	required bytes data = 5;
+	optional bytes metadata = 6;
+	*/
+	return {
+		event_id: uuid.parse(evt.EventId, new Buffer(16))
+	, event_type: evt.EventType
+	, data_content_type: 1
+	, metadata_content_type: 1
+	, data: new Buffer(JSON.stringify(evt.Data))
+	, metadata: new Buffer(JSON.stringify(evt.Metadata))
+	}
 }
 
 
+EsTcpConnection.prototype._storeCallback = function(correlationId, cb) {
+	this._callbacks[correlationId] = cb
+}
 
