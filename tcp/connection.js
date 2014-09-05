@@ -24,7 +24,13 @@ var net = require('net')
 				if(payload.result === 'WrongExpectedVersion') {
 					return cb(new Error(payload.message))
 				}
-				cb(null, payload)
+				cb(null, {
+					NextExpectedVersion: payload.last_event_number
+				, LogPosition: {
+						CommitPosition: payload.hasOwnProperty('commit_position') ? payload.commit_position : -1
+					, PreparePosition: payload.hasOwnProperty('prepare_position') ? payload.prepare_position : -1
+					}
+				})
 			}
 		, 'BadRequest': function(correlationId, payload, cb) {
 				cb(new Error(payload.toString()))
@@ -101,7 +107,7 @@ function EsTcpConnection(socket) {
 }
 util.inherits(EsTcpConnection, EventEmitter)
 
-EsTcpConnection.prototype.appendToStream = function(streamName, events, cb) {
+EsTcpConnection.prototype.appendToStream = function(streamName, events, expectedVersion, cb) {
   var correlationId = uuid.v4()
 	this._storeCallback(correlationId, cb)
 
@@ -112,7 +118,7 @@ EsTcpConnection.prototype.appendToStream = function(streamName, events, cb) {
 			name: 'WriteEvents'
 		, data: {
 				event_stream_id: streamName
-			, expected_version: 0
+			, expected_version: expectedVersion
 			, events: events.map(toEventStoreEvent)
 			, require_master: true
 			}
