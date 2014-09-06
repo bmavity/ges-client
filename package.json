@@ -21,7 +21,7 @@
   "devDependencies": {
     "mocha": "^1.21.4",
     "should": "^4.0.4",
-    "ges-test-helper": "^0.1.1"
+    "ges-test-helper": "^0.1.2"
   },
   "engines": {
     "node": "0.10.x"
