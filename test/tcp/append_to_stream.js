@@ -1,7 +1,8 @@
 var client = require('../../')
 	, ges = require('ges-test-helper')
-	, createTestEvent = require('../createTestEvent')
 	, uuid = require('node-uuid')
+	, createTestEvent = require('../createTestEvent')
+	, range = require('../range')
 
 describe('append to stream', function() {
 	var es
@@ -201,15 +202,6 @@ describe('append to stream', function() {
   })
 })
 
-function range(start, count) {
-	var end = start + count
-		, all = []
-	for(var i = start; i < end; i += 1) {
-		all.push(i)
-	}
-	return all
-}
-
 
 /*
    	describe('ssl_append_to_stream')
@@ -236,23 +228,3 @@ function range(start, count) {
   it('can_append_multiple_events_at_once')
     //var stream = 'can_append_multiple_events_at_once'
 */
-
-
-		var events = [{
-					EventId: uuid.v4()
-				, EventType: 'FirstEvent'
-				, Data: { hi: 'bye' }
-				, Metadata: { metaHi: 'metaBye' }
-				}
-			, {
-					EventId: uuid.v4()
-				, EventType: 'FirstEvent'
-				, Data: { hi: 'everything' }
-				, Metadata: { metaHi: 'meta meta everything' }
-				}
-			, {
-					EventId: uuid.v4()
-				, EventType: 'AnotherEvent'
-				, Data: { total: 5 }
-				, Metadata: { happened: '07/05/1973' }
-			}]
