@@ -1,6 +1,10 @@
 var client = require('../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
+	, createTestEvent = require('../createTestEvent')
+	, range = require('../range')
+
+require('../shouldExtensions')
 
 describe('read event stream forward should', function() {
 	var es
@@ -76,22 +80,121 @@ describe('read event stream forward should', function() {
     })
   })
 
-  it('return_empty_slice_when_called_on_non_existing_range')
-      //'read_event_stream_forward_should_return_empty_slice_when_called_on_non_existing_range'
-  it('return_partial_slice_if_not_enough_events_in_stream')
-      //'read_event_stream_forward_should_return_partial_slice_if_no_enough_events_in_stream'
-  it('return_partial_slice_when_got_int_max_value_as_maxcount')
-      //'read_event_stream_forward_should_return_partial_slice_when_got_int_max_value_as_maxcount'
-  it('return_events_in_same_order_as_written')
-      //'read_event_stream_forward_should_return_events_in_same_order_as_written'
-  it('be_able_to_read_single_event_from_arbitrary_position')
-      //'read_event_stream_forward_should_be_able_to_read_from_arbitrary_position'
-  it('be_able_to_read_slice_from_arbitrary_position')
-      //'read_event_stream_forward_should_be_able_to_read_slice_from_arbitrary_position'
+  it('return_empty_slice_when_called_on_non_existing_range', function(done) {
+    var stream = 'read_event_stream_forward_should_return_empty_slice_when_called_on_non_existing_range'
+	    , allEvents = range(0, 10).map(function(i) {
+	    		return createTestEvent(i.toString())
+	    	})
+
+		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    	if(err) return done(err)
+    	
+    	connection.readStreamEventsForward(stream, { start: 11, count: 5 }, function(err, readResult) {
+    		if(err) return cb(err)
+
+    		readResult.Events.length.should.equal(0)
+	    	done()
+    	})
+    })
+  })
+
+  it('return_partial_slice_if_not_enough_events_in_stream', function(done) {
+    var stream = 'read_event_stream_forward_should_return_partial_slice_if_no_enough_events_in_stream'
+	    , allEvents = range(0, 10).map(function(i) {
+	    		return createTestEvent(i.toString())
+	    	})
+
+		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    	if(err) return done(err)
+    	
+    	connection.readStreamEventsForward(stream, { start: 9, count: 5 }, function(err, readResult) {
+    		if(err) return cb(err)
+
+    		readResult.Events.length.should.equal(1)
+	    	done()
+    	})
+    })
+  })
+
+  it('return_partial_slice_when_got_int_max_value_as_maxcount', function(done) {
+    var stream = 'read_event_stream_forward_should_return_partial_slice_when_got_int_max_value_as_maxcount'
+	    , allEvents = range(0, 10).map(function(i) {
+	    		return createTestEvent(i.toString())
+	    	})
+
+		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    	if(err) return done(err)
+    	
+    	connection.readStreamEventsForward(stream, { start: client.streamPosition.start, count: client.maxRecordCount }, function(err, readResult) {
+    		if(err) return cb(err)
+
+    		readResult.Events.length.should.equal(10)
+	    	done()
+    	})
+    })
+  })
+
+/*
+  it('return_events_in_same_order_as_written', function(done) {
+    var stream = 'read_event_stream_forward_should_return_events_in_same_order_as_written'
+	    , allEvents = range(0, 10).map(function(i) {
+	    		return createTestEvent(i.toString())
+	    	})
+
+		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    	if(err) return done(err)
+
+    	var opts = { start: client.streamPosition.start, count: allEvents.length }
+    	connection.readStreamEventsForward(stream, opts, function(err, readResult) {
+    		if(err) return done(err)
+
+    		readResult.Events.should.matchEvents(allEvents)
+	    	done()
+    	})
+    })
+  })
+
+  it('be_able_to_read_single_event_from_arbitrary_position', function(done) {
+    var stream = 'read_event_stream_forward_should_be_able_to_read_from_arbitrary_position'
+	    , allEvents = range(0, 10).map(function(i) {
+	    		return createTestEvent(i.toString())
+	    	})
+
+		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    	if(err) return done(err)
+
+    	var opts = { start: 5, count: 1 }
+    	connection.readStreamEventsForward(stream, opts, function(err, readResult) {
+    		if(err) return done(err)
+
+    		readResult.Events[0].should.matchEvent(allEvents[5])
+	    	done()
+    	})
+    })
+  })
+
+*/
+  it('be_able_to_read_slice_from_arbitrary_position', function(done) {
+    var stream = 'read_event_stream_forward_should_be_able_to_read_slice_from_arbitrary_position'
+	    , allEvents = range(0, 10).map(function(i) {
+	    		return createTestEvent(i.toString())
+	    	})
+
+		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    	if(err) return done(err)
+
+    	var opts = { start: 5, count: 2 }
+    	connection.readStreamEventsForward(stream, opts, function(err, readResult) {
+    		if(err) return done(err)
+
+  			readResult.Events.should.matchEvents(allEvents.slice(5, 7))
+	    	done()
+    	})
+    })
+  })
 
   after(function(done) {
   	es.on('exit', function(code, signal) {
-  		console.log('Exited with ', code, signal)
 	  	done()
   	})
   	es.kill()

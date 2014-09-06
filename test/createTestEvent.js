@@ -8,10 +8,13 @@ module.exports = function createTestEvent(eventId, data, metadata) {
 		eventId = null
 	}
 	eventId = eventId || uuid.v4()
-	var encodedData = new Buffer(data || eventId)
-  var encodedMetadata = new Buffer(metadata || 'metadata');
+	data = data || eventId
+	metadata = metadata || 'metadata'
+	
+	var encodedData = new Buffer(data)
+  var encodedMetadata = new Buffer(metadata)
 
-  return eventData(eventId, 'TestEvent', false, encodedData, encodedMetadata);
+  return eventData(eventId, 'TestEvent', false, encodedData, encodedMetadata)
 }
 
 

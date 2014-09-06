@@ -8,10 +8,10 @@ module.exports = function EventData(eventId, type, isJson, data, metadata) {
 	metadata = metadata || new Buffer(0)
 	
 	Object.defineProperties(this, {
-		EventId: { value: eventId }
-  , Type: { value: type }
-  , IsJson: { value: isJson }
-  , Data: { value: data }
-  , Metadata: { value: metadata }
+		EventId: { value: eventId, enumerable: true }
+  , Type: { value: type, enumerable: true }
+  , IsJson: { value: isJson, enumerable: true }
+  , Data: { value: data, enumerable: true }
+  , Metadata: { value: metadata, enumerable: true }
 	})
 }

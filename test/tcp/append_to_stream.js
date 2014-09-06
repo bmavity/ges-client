@@ -182,7 +182,7 @@ describe('append to stream', function() {
   it('can_append_multiple_events_at_once', function(done) {
     var stream = 'can_append_multiple_events_at_once'
     	, allEvents = range(0, 100).map(function(i) {
-	    		return createTestEvent(i, i)
+	    		return createTestEvent(i.toString(), i.toString())
 	    	})
 
 		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {

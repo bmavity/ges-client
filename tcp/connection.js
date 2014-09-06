@@ -223,11 +223,11 @@ function toEventStoreEvent(evt) {
 	*/
 	return {
 		event_id: uuid.parse(evt.EventId, new Buffer(16))
-	, event_type: evt.EventType
-	, data_content_type: 1
-	, metadata_content_type: 1
-	, data: new Buffer(JSON.stringify(evt.Data))
-	, metadata: new Buffer(JSON.stringify(evt.Metadata))
+	, event_type: evt.Type
+	, data_content_type: evt.IsJson ? 1 : 0
+	, metadata_content_type: evt.IsJson ? 1 : 0
+	, data: evt.Data
+	, metadata: evt.Metadata
 	}
 }
 
@@ -242,7 +242,7 @@ function fromEventStoreEvent(rawEvent) {
 	}
 }
 
-function toRecordedEvent(rawEvent) {
+function toRecordedEvent(systemRecord) {
 	/*
 	required string event_stream_id = 1;
 	required int32 event_number = 2;
@@ -255,7 +255,21 @@ function toRecordedEvent(rawEvent) {
 	optional int64 created = 9;
 	optional int64 created_epoch = 10;
 	*/
-	return {}
+	var recordedEvent = {}
+		, metadata = systemRecord.hasOwnProperty('metadata') || systemRecord.metadata !== null ? systemRecord.metadata : new Buffer(0)
+		, data = systemRecord.data === null ? new Buffer(0) : systemRecord.data
+	Object.defineProperties(recordedEvent, {
+		EventStreamId: { value: systemRecord.event_stream_id, enumerable: true }
+  , EventId: { value: uuid.unparse(systemRecord.event_id), enumerable: true }
+  , EventNumber: { value: systemRecord.event_number, enumerable: true }
+  , EventType: { value: systemRecord.event_type, enumerable: true }
+  , Data: { value: data, enumerable: true }
+  , Metadata: { value: metadata, enumerable: true }  
+  , IsJson: { value: systemRecord.data_content_type === 1, enumerable: true }
+  , Created: { value: systemRecord.created, enumerable: true }
+  , CreatedEpoch: { value: systemRecord.created_epoch, enumerable: true }
+	})
+	return recordedEvent
 }
 
 
