@@ -19,9 +19,10 @@
     "request": "2.34.x"
   },
   "devDependencies": {
+    "async": "^0.9.0",
+    "ges-test-helper": "^0.1.2",
     "mocha": "^1.21.4",
-    "should": "^4.0.4",
-    "ges-test-helper": "^0.1.2"
+    "should": "^4.0.4"
   },
   "engines": {
     "node": "0.10.x"

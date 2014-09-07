@@ -31,11 +31,24 @@ var net = require('net')
 				  public readonly int NextEventNumber;
 				  public readonly int LastEventNumber;
 				  public readonly bool IsEndOfStream;
+
+
+				  repeated ResolvedIndexedEvent events = 1;
+					required ReadStreamResult result = 2;
+					required int32 next_event_number = 3;
+					required int32 last_event_number = 4;
+					required bool is_end_of_stream = 5;
+					required int64 last_commit_position = 6;
+
+					optional string error = 7;
 				*/
 
 				cb(null, {
 					Status: payload.result
 				, Events: payload.events.map(fromEventStoreEvent)
+				, NextEventNumber: payload.next_event_number
+				, LastEventNumber: payload.last_event_number
+				, IsEndOfStream: payload.is_end_of_stream
 				})
 			}
 		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
