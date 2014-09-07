@@ -51,6 +51,21 @@ var net = require('net')
 				, IsEndOfStream: payload.is_end_of_stream
 				})
 			}
+    , 'SubscriptionConfirmation': function(correlationId, payload, subscription) {
+				payload = parser.parse('SubscriptionConfirmation', payload)
+				//console.log('SubscriptionConfirmation', correlationId, payload)
+			}
+    , 'StreamEventAppeared': function(correlationId, payload, subscription) {
+				payload = parser.parse('StreamEventAppeared', payload)
+
+				//console.log('StreamEventAppeared', correlationId, payload)
+				subscription.emit('event')
+			}
+    , 'SubscriptionDropped': function(correlationId, payload, subscription) {
+				payload = parser.parse('SubscriptionDropped', payload)
+				//console.log('SubscriptionDropped', correlationId, payload)
+				subscription.emit('dropped')
+			}
 		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
 				payload = parser.parse('WriteEventsCompleted', payload)
 
@@ -125,7 +140,7 @@ function EsTcpConnection(socket) {
 	  if(!handler) return
 	  
 	  var correlationId = message.correlationId
-			, waitingCallback = me._callbacks[correlationId]
+			, waitingCallback = me._callbacks[correlationId] || me._subscriptions[correlationId]
 			, toSend = handler(correlationId, message.payload, waitingCallback)
 		if(toSend) {
 			sender.send(toSend)
@@ -142,6 +157,7 @@ function EsTcpConnection(socket) {
 
 	this._sender = sender
 	this._callbacks = {}
+	this._subscriptions = {}
 }
 util.inherits(EsTcpConnection, EventEmitter)
 
@@ -225,6 +241,33 @@ EsTcpConnection.prototype.readStreamEventsForward = function(streamName, options
 	})
 }
 
+EsTcpConnection.prototype.subscribeToStream = function(stream, resolveLinkTos) {
+	var correlationId = uuid.v4()
+		, subscription = new EsSubscription(this, correlationId)
+	this._storeSubscription(correlationId, subscription)
+
+  this._sender.send({
+  	messageName: 'SubscribeToStream'
+  , correlationId: correlationId
+  , payload: {
+  		name: 'SubscribeToStream'
+  	, data: {
+				event_stream_id: stream
+			, resolve_link_tos: !!resolveLinkTos
+			}
+		}
+	})
+
+	return subscription
+}
+
+EsTcpConnection.prototype.unsubscribe = function(correlationId) {
+  this._sender.send({
+  	messageName: 'UnsubscribeFromStream'
+  , correlationId: correlationId
+	})
+}
+
 function toEventStoreEvent(evt) {
 	/*
 	required bytes event_id = 1;
@@ -290,3 +333,20 @@ EsTcpConnection.prototype._storeCallback = function(correlationId, cb) {
 	this._callbacks[correlationId] = cb
 }
 
+EsTcpConnection.prototype._storeSubscription = function(correlationId, subscription) {
+	this._subscriptions[correlationId] = subscription
+}
+
+
+function EsSubscription(connection, correlationId) {
+	this._connection = connection
+	this._correlationId = correlationId
+
+	EventEmitter.call(this)
+}
+util.inherits(EsSubscription, EventEmitter)
+
+
+EsSubscription.prototype.unsubscribe = function() {
+	this._connection.unsubscribe(this._correlationId)
+}
