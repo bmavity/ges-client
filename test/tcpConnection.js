@@ -5,6 +5,7 @@ describe('ges-client, when invoked without connection args', function() {
 	var connection
 		, es
 		, isConnected = false
+		, isDone = false
 
 	before(function(done) {
 		memoryEs(function(err, memory) {
@@ -13,12 +14,19 @@ describe('ges-client, when invoked without connection args', function() {
 			es = memory
 			connection = client()
 
+	  	es.on('error', console.log)
 			connection.on('connect', function() {
 				isConnected = true
+				isDone = true
 				done()
 			})
 
-			connection.on('error', done)
+			connection.on('error', function() {
+				if(!isDone) {
+					isDone = true
+					done()
+				}
+			})
 		})
 	})
 
@@ -35,6 +43,7 @@ describe('ges-client, when invoked without connection args', function() {
   		console.log('Exited with ', code, signal)
 	  	done()
   	})
+  	es.on('error', console.log)
   	es.kill()
   })
 })
@@ -64,5 +73,44 @@ describe('ges-client, when invoked with incorrect connection args', function() {
 
   after(function(done) {
   	done()
+  })
+})
+
+
+describe('ges-client, when connected', function() {
+	this.timeout(15000)
+
+	var connection
+		, es
+		, wasOpenFor20Seconds = false
+
+	before(function(done) {
+		memoryEs({ tcpPort: 4567 }, function(err, memory) {
+			if(err) return done(err)
+
+			es = memory
+			connection = client({ port: 4567 })
+
+			connection.on('connect', function() {
+				setTimeout(function() {
+					wasOpenFor20Seconds = true
+					done()
+				}, 8000)
+			})
+
+			connection.on('error', done)
+		})
+	})
+
+  it('should not disconnect', function() {
+  	wasOpenFor20Seconds.should.be.true
+  })
+
+  after(function(done) {
+  	es.on('exit', function(code, signal) {
+  		console.log('Exited with ', code, signal)
+	  	done()
+  	})
+  	es.kill()
   })
 })

@@ -1,70 +1,98 @@
 var net = require('net')
-	, Readable = require('stream').Readable
 	, EventEmitter = require('events').EventEmitter
 	, util = require('util')
 	, uuid = require('node-uuid')
+	, messageReceiver = require('./messageReceiver')
+	, messageSender = require('./messageSender')
 	, parser = require('./messageParser')
-	, framer = require('./lengthPrefixMessageFramer')
 	, commandHandlers = {
 			'HeartbeatRequestCommand': function(correlationId) {
-		  	sendMessage('HeartbeatResponseCommand', correlationId)
+				return {
+					messageName: 'HeartbeatResponseCommand'
+				, correlationId: correlationId
+				}
 			}
-		, 'ReadAllEventsForwardCompleted': function(correlationId, payload) {
+		, 'ReadAllEventsForwardCompleted': function(correlationId, payload, cb) {
 				var a = parser.parse('ReadAllEventsCompleted', payload)
 		  		, events = a.events
 				  		.filter(isClientEvent)
 				  		.map(parseEventStoreEvent)
-				stream.addEvents(events)
+				cb(null, events)
+			}
+		, 'ReadStreamEventsForwardCompleted': function(correlationId, payload, cb) {
+				payload = parser.parse('ReadStreamEventsCompleted', payload)
+
+				/*
+					public readonly SliceReadStatus Status;
+				  public readonly string Stream;
+				  public readonly int FromEventNumber;
+				  public readonly ReadDirection ReadDirection;
+				  public readonly ResolvedEvent[] Events;
+				  public readonly int NextEventNumber;
+				  public readonly int LastEventNumber;
+				  public readonly bool IsEndOfStream;
+
+
+				  repeated ResolvedIndexedEvent events = 1;
+					required ReadStreamResult result = 2;
+					required int32 next_event_number = 3;
+					required int32 last_event_number = 4;
+					required bool is_end_of_stream = 5;
+					required int64 last_commit_position = 6;
+
+					optional string error = 7;
+				*/
+
+				cb(null, {
+					Status: payload.result
+				, Events: payload.events.map(fromEventStoreEvent)
+				, NextEventNumber: payload.next_event_number
+				, LastEventNumber: payload.last_event_number
+				, IsEndOfStream: payload.is_end_of_stream
+				})
+			}
+    , 'SubscriptionConfirmation': function(correlationId, payload, subscription) {
+				payload = parser.parse('SubscriptionConfirmation', payload)
+				//console.log('SubscriptionConfirmation', correlationId, payload)
+			}
+    , 'StreamEventAppeared': function(correlationId, payload, subscription) {
+				payload = parser.parse('StreamEventAppeared', payload)
+
+				//console.log('StreamEventAppeared', correlationId, payload)
+				subscription.emit('event')
+			}
+    , 'SubscriptionDropped': function(correlationId, payload, subscription) {
+				payload = parser.parse('SubscriptionDropped', payload)
+				//console.log('SubscriptionDropped', correlationId, payload)
+				subscription.emit('dropped')
+			}
+		, 'WriteEventsCompleted': function(correlationId, payload, cb) {
+				payload = parser.parse('WriteEventsCompleted', payload)
+
+				if(payload.result === 'WrongExpectedVersion') {
+					return cb(new Error(payload.message))
+				}
+
+				var hasCommitPosition = payload.commit_position || payload.commit_position === 0
+					, hasPreparePosition = payload.prepare_position || payload.prepare_position === 0
+
+				//console.log(payload)
+				cb(null, {
+					NextExpectedVersion: payload.last_event_number
+				, LogPosition: {
+						CommitPosition: hasCommitPosition ? payload.commit_position : -1
+					, PreparePosition: hasPreparePosition ? payload.prepare_position : -1
+					}
+				})
+			}
+		, 'BadRequest': function(correlationId, payload, cb) {
+				cb(new Error(payload.toString()))
+			}
+		, 'NotHandled': function(correlationId, payload, cb) {
+				payload = parser.parse('NotHandled', payload)
+				cb(new Error(payload.reason))
 			}
 		}
-	, incompletePacket
-	, client
-	, stream
-
-module.exports = createConnection
-
-
-function createConnection(opts) {
-	opts = opts || {}
-	opts.host = opts.host || '127.0.0.1'
-	opts.port = opts.port || 1113
-	var socket = net.connect(opts.port, opts.host)
-
-	return new Connection(socket)
-}
-
-
-function EventStream() {
-	Readable.call(this, {
-		objectMode: true
-	})
-
-	this._es = []
-	this_hasStarted = false
-}
-util.inherits(EventStream, Readable)
-
-EventStream.prototype._read = function() {
-	console.log('in _read')
-
-	if(this._hasStarted && !this._es.length) {
-		this.push(null)
-	}
-}
-
-EventStream.prototype.writeEvents = function() {
-	var evt = this._es.shift()
-
-	while(evt && this.push(evt)) {
-		evt = this._es.shift()
-	}
-}
-
-EventStream.prototype.addEvents = function(events) {
-	this._es = this._es.concat(events)
-	this._hasStarted = true
-	this.writeEvents()
-}
 
 function isClientEvent(evt) {
 	return evt.event.event_type.indexOf('$') !== 0
@@ -78,10 +106,25 @@ function parseEventStoreEvent(rawEvent) {
 	return evt
 }
 
-function Connection(socket) {
+module.exports = createConnection
+
+
+function createConnection(opts) {
+	opts = opts || {}
+	opts.host = opts.host || '127.0.0.1'
+	opts.port = opts.port || 1113
+	var socket = net.connect(opts.port, opts.host)
+
+	return new EsTcpConnection(socket)
+}
+
+
+function EsTcpConnection(socket) {
 	EventEmitter.call(this)
 
 	var me = this
+		, receiver = messageReceiver(socket)
+		, sender = messageSender(socket)
 
 	socket.on('connect', function() {
 		me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
@@ -90,97 +133,220 @@ function Connection(socket) {
 	socket.on('error', function() {
 		me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
 	})
-/*
-	socket.on('data', receiveMessage)
 
+	receiver.on('message', function(message) {
+		//console.log('Received message: ', message.messageName)
+  	var handler = commandHandlers[message.messageName]
+	  if(!handler) return
+	  
+	  var correlationId = message.correlationId
+			, waitingCallback = me._callbacks[correlationId] || me._subscriptions[correlationId]
+			, toSend = handler(correlationId, message.payload, waitingCallback)
+		if(toSend) {
+			sender.send(toSend)
+		}
+		if(waitingCallback) {
+			delete me._callbacks[correlationId]
+		}
+	})
+/*
 	socket.on('end', function() {
 	  console.log('client disconnected')
 	})
 */
-}
-util.inherits(Connection, EventEmitter)
 
-Connection.prototype.appendToStream = function(streamName, events, cb) {
-	sendMessage('WriteEvents', uuid.v4(), parser.serialize('WriteEvents', {
-		event_stream_id: streamName
-	, expected_version: 0
-	, events: []
-	, require_master: true
-	}))
+	this._sender = sender
+	this._callbacks = {}
+	this._subscriptions = {}
+}
+util.inherits(EsTcpConnection, EventEmitter)
+
+EsTcpConnection.prototype.appendToStream = function(streamName, expectedVersion, events, cb) {
+	if(!cb && typeof events === 'function') {
+		cb = events
+		events = []
+	}
+	if(!Array.isArray(events)) {
+		events = [ events ]
+	}
+
+  var correlationId = uuid.v4()
+	this._storeCallback(correlationId, cb)
+
+	this._sender.send({
+		messageName: 'WriteEvents'
+	, correlationId: correlationId
+	, payload: {
+			name: 'WriteEvents'
+		, data: {
+				event_stream_id: streamName
+			, expected_version: expectedVersion
+			, events: events.map(toEventStoreEvent)
+			, require_master: true
+			}
+		}
+	})
+}
+
+EsTcpConnection.prototype.readAllEventsForward = function(cb) {
+  var correlationId = uuid.v4()
+	this._storeCallback(correlationId, cb)
+
+  this._sender.send({
+  	messageName: 'ReadAllEventsForward'
+  , correlationId: correlationId
+  , payload: {
+  		name: 'ReadAllEvents'
+  	, data: {
+				commit_position: 0
+			, prepare_position: 0
+			, max_count: 1000
+			, resolve_link_tos: false
+			, require_master: false
+			}
+		}
+	})
+}
+
+
+EsTcpConnection.prototype.readStreamEventsForward = function(streamName, options, cb) {
+	if(options.start < 0) {
+		setImmediate(function() {
+			cb(new Error('Argument: start must be non-negative.'))
+		})
+		return
+	}
+	if(options.count <= 0) {
+		setImmediate(function() {
+			cb(new Error('Argument: count must be positive.'))
+		})
+		return
+	}
+  var correlationId = uuid.v4()
+	this._storeCallback(correlationId, cb)
+
+  this._sender.send({
+  	messageName: 'ReadStreamEventsForward'
+  , correlationId: correlationId
+  , payload: {
+  		name: 'ReadStreamEvents'
+  	, data: {
+				event_stream_id: streamName
+			, from_event_number: options.start
+			, max_count: options.count
+			, resolve_link_tos: !!options.resolveLinkTos
+			, require_master: !!options.requireMaster
+			}
+		}
+	})
+}
+
+EsTcpConnection.prototype.subscribeToStream = function(stream, resolveLinkTos) {
+	var correlationId = uuid.v4()
+		, subscription = new EsSubscription(this, correlationId)
+	this._storeSubscription(correlationId, subscription)
+
+  this._sender.send({
+  	messageName: 'SubscribeToStream'
+  , correlationId: correlationId
+  , payload: {
+  		name: 'SubscribeToStream'
+  	, data: {
+				event_stream_id: stream
+			, resolve_link_tos: !!resolveLinkTos
+			}
+		}
+	})
+
+	return subscription
+}
+
+EsTcpConnection.prototype.unsubscribe = function(correlationId) {
+  this._sender.send({
+  	messageName: 'UnsubscribeFromStream'
+  , correlationId: correlationId
+	})
 }
 
 function toEventStoreEvent(evt) {
+	/*
+	required bytes event_id = 1;
+	required string event_type = 2;
+	required int32 data_content_type = 3;
+	required int32 metadata_content_type = 4;
+	required bytes data = 5;
+	optional bytes metadata = 6;
+	*/
 	return {
-		
+		event_id: uuid.parse(evt.EventId, new Buffer(16))
+	, event_type: evt.Type
+	, data_content_type: evt.IsJson ? 1 : 0
+	, metadata_content_type: evt.IsJson ? 1 : 0
+	, data: evt.Data
+	, metadata: evt.Metadata
 	}
 }
 
-Connection.prototype.readAllEventsForward = function() {
-	stream = new EventStream()
-  sendMessage('ReadAllEventsForward', uuid.v4(), parser.serialize('ReadAllEvents', {
-		commit_position: 0
-	, prepare_position: 0
-	, max_count: 1000
-	, resolve_link_tos: false
-	, require_master: false
-	}), true)
-	return stream
+function fromEventStoreEvent(rawEvent) {
+	/*
+	required EventRecord event = 1;
+	optional EventRecord link = 2;
+	*/
+	return {
+		Event: toRecordedEvent(rawEvent.event)
+	, Link: rawEvent.link ? toRecordedEvent(rawEvent.link) : null
+	}
 }
 
-function combineWithIncompletePacket(packet) {
-  var newPacket = new Buffer(incompletePacket.length + packet.length)
-  incompletePacket.copy(newPacket, 0)
-  packet.copy(newPacket, incompletePacket.length)
-  incompletePacket = null
-  return newPacket
+function toRecordedEvent(systemRecord) {
+	/*
+	required string event_stream_id = 1;
+	required int32 event_number = 2;
+	required bytes event_id = 3;
+	required string event_type = 4;
+	required int32 data_content_type = 5;
+	required int32 metadata_content_type = 6;
+	required bytes data = 7;
+	optional bytes metadata = 8;
+	optional int64 created = 9;
+	optional int64 created_epoch = 10;
+	*/
+	var recordedEvent = {}
+		, metadata = systemRecord.hasOwnProperty('metadata') || systemRecord.metadata !== null ? systemRecord.metadata : new Buffer(0)
+		, data = systemRecord.data === null ? new Buffer(0) : systemRecord.data
+	Object.defineProperties(recordedEvent, {
+		EventStreamId: { value: systemRecord.event_stream_id, enumerable: true }
+  , EventId: { value: uuid.unparse(systemRecord.event_id), enumerable: true }
+  , EventNumber: { value: systemRecord.event_number, enumerable: true }
+  , EventType: { value: systemRecord.event_type, enumerable: true }
+  , Data: { value: data, enumerable: true }
+  , Metadata: { value: metadata, enumerable: true }  
+  , IsJson: { value: systemRecord.data_content_type === 1, enumerable: true }
+  , Created: { value: systemRecord.created, enumerable: true }
+  , CreatedEpoch: { value: systemRecord.created_epoch, enumerable: true }
+	})
+	return recordedEvent
 }
 
-function handleCompletePacket(packet) {
-	var unframedPacket = framer.unframe(packet)
-  	, handler = commandHandlers[unframedPacket.command]
 
-  console.log("Received " + unframedPacket.command
-  	+ " command with flag: " + unframedPacket.flag
-  	+ " and correlation id: " + unframedPacket.correlationId
-	)
-
-  if(!handler) return
-
-  handler(unframedPacket.correlationId, unframedPacket.payload)
+EsTcpConnection.prototype._storeCallback = function(correlationId, cb) {
+	this._callbacks[correlationId] = cb
 }
 
-function handleIncompletePacket(packet, expectedPacketLength) {
-  //console.log('Incomplete Packet (wanted: ' + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
-	incompletePacket = packet
+EsTcpConnection.prototype._storeSubscription = function(correlationId, subscription) {
+	this._subscriptions[correlationId] = subscription
 }
 
-function handleMultiplePackets(packet, expectedPacketLength) {
-  console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
-  receiveMessage(packet.slice(0, expectedPacketLength))
-  receiveMessage(packet.slice(expectedPacketLength))
+
+function EsSubscription(connection, correlationId) {
+	this._connection = connection
+	this._correlationId = correlationId
+
+	EventEmitter.call(this)
 }
+util.inherits(EsSubscription, EventEmitter)
 
-function receiveMessage(data) {
-	if(incompletePacket) {
-		data = combineWithIncompletePacket(data)
-  }
 
-  var contentLength = framer.getContentLength(data)
-  	, expectedPacketLength = contentLength + 4
-
-  if (data.length === expectedPacketLength) {
-  	handleCompletePacket(data)
-  } else if (data.length > expectedPacketLength) {
-  	handleMultiplePackets(data, expectedPacketLength)
-  } else {
-    handleIncompletePacket(data, expectedPacketLength)
-  }
-}
-
-function sendMessage(messageName, correlationId, payload, auth) {
-	var packet = framer.frame(messageName, correlationId, payload, auth)
-
-  console.log("Sending " + messageName + " message with correlation id: " + correlationId)
-
-  client.write(packet)
+EsSubscription.prototype.unsubscribe = function() {
+	this._connection.unsubscribe(this._correlationId)
 }

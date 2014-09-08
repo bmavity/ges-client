@@ -10,7 +10,6 @@ var is = require('is')
 		}, {})
 
 module.exports = function getFlagOrCode(flagOrCode) {
-	console.log(flagOrCode, flags[flagOrCode])
 	return is.string(flagOrCode) ? flags[flagOrCode] : codes[flagOrCode]
 }
 

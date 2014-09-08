@@ -70,6 +70,5 @@ var is = require('is')
 		}, {})
 
 module.exports = function getCommandOrCode(commandOrCode) {
-	console.log(commandOrCode, commands[commandOrCode])
 	return is.string(commandOrCode) ? commands[commandOrCode] : codes[commandOrCode]
 }
