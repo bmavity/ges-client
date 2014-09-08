@@ -11,11 +11,11 @@ describe('appending_to_implicitly_created_stream', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 3456 }, function(err, memory) {
+		ges({ tcpPort: 5678 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 3456 })
+			connection = client({ port: 5678 })
 
 			connection.on('connect', function() {
 				done()

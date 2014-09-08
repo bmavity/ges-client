@@ -11,13 +11,14 @@ describe('appending_to_implicitly_created_stream', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 3456 }, function(err, memory) {
+		ges({ tcpPort: 4567 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 3456 })
+			connection = client({ port: 4567 })
 
 			connection.on('connect', function() {
+				connection.removeAllListeners()
 				done()
 			})
 
@@ -325,10 +326,20 @@ describe('appending_to_implicitly_created_stream', function() {
 	})
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
-  	})
-  	es.on('error', done)
-  	es.kill()
+  	var ended = false
+  	function endClean() {
+  		if(ended) return
+  		ended = true
+  		done()
+  	}
+  	try {
+	  	es.on('exit', endClean)
+	  	es.on('error', endClean)
+	  	connection.on('error', endClean)
+	  	es.kill()
+  	}
+  	finally {
+  		endClean()
+  	}
   })
 })

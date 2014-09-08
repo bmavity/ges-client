@@ -11,11 +11,11 @@ describe('subscribe_should', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 3456 }, function(err, memory) {
+		ges({ tcpPort: 1234 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 3456 })
+			connection = client({ port: 1234 })
 
 			connection.on('connect', function() {
 				done()
