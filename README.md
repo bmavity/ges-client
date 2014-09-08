@@ -89,7 +89,9 @@ Copyright (c) 2014 Brian Mavity.
 ges-client is licensed under the MIT license. All rights not explicitly granted in the MIT license are reserved. See the included LICENSE.md file for more details.
 
 
-<a name="thanks">Special Thanks</a>
+<a name="thanks"></a>
+Special Thanks
+-----------
 
 Special thanks to Ken Pratt for writing the first version of this over at https://github.com/kenpratt/nodejs-EventStore .
 It made early development go by much faster.
