@@ -11,6 +11,7 @@ ges-client
 
   * <a href="#intro">Introduction</a>
   * <a href="#basic">Basic usage</a>
+  * <a href="#status">Major Feature Status</a>
   * <a href="#licence">Licence &amp; copyright</a>
   * <a href="#thanks">Special Thanks</a>
 
@@ -79,6 +80,20 @@ connection.on('connect', function() {
   })
 })
 ```
+
+<a name="status"></a>
+Major Feature Status
+-------------------
+
+* Connection (Partial - not all events are available)
+* Append to stream (Partial - except for transactions/deleted)
+* Read from stream (Partial - forward reads only)
+* Subscriptions (Partial - live subscription to stream only)
+* Read from all (Not Started)
+* Stream ACLs (Not Started)
+* Transations (Not Started)
+* Stream deletes (Not Started)
+* Stream metadata (Not Started)
 
 <a name="license"></a>
 License &amp; copyright
