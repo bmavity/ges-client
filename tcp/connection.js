@@ -154,8 +154,9 @@ function EsTcpConnection(socket, endPoint) {
 		//me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
 	})
 
-	socket.on('error', function() {
-		me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
+	socket.on('error', function(err) {
+		//console.log('error in old socket', err)
+		//me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
 	})
 
 	receiver.on('message', function(message) {

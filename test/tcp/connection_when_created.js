@@ -17,8 +17,7 @@ describe('connection, when created', function() {
 		client({ port: 6000 }, function(err, connection) {
 			(err === null).should.be.true
 			connection.isInState('Connected').should.be.true
-			//connection.disconnect()
-			done()
+			connection.close(done)
 		})
 	})
 
@@ -28,8 +27,7 @@ describe('connection, when created', function() {
 		connection.on('connect', function(message) {
 			message.endPoint.port.should.equal(6000)
 			connection.isInState('Connected').should.be.true
-			//connection.disconnect()
-			done()
+			connection.close(done)
 		})
 	})
 
@@ -42,8 +40,7 @@ describe('connection, when created', function() {
 		connection.on('connect', function(message) {
 			message.endPoint.port.should.equal(6000)
 			connection.isInState('Connected').should.be.true
-			//connection.disconnect()
-			done()
+			connection.close(done)
 		})
 
 		connection.connect()
@@ -53,8 +50,7 @@ describe('connection, when created', function() {
 		var con = client({ port: 6000, requireExplicitConnection: true }, function(err, connection) {
 			(err === null).should.be.true
 			connection.isInState('Connected').should.be.true
-			//connection.disconnect()
-			done()
+			connection.close(done)
 		})
 
 		con.connect()

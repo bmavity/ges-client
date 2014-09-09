@@ -3,10 +3,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 	, EventEmitter = require('events').EventEmitter
 	, states = {
 			Init: {
-				CloseConnection: function(message, cb) {
-					this._state = states['Closed']
-					cb(null)
-				}
+				CloseConnection: performCloseConnection
 			, EstablishTcpConnection: noOp
 			, StartConnection: function(message, cb) {
 					this._endPoint = message.endPoint
@@ -17,10 +14,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, TcpConnectionEstablished: noOp
 			}
 		, Connecting: {
-				CloseConnection: function(message, cb) {
-					this._state = states['Closed']
-					cb(null)
-				}
+				CloseConnection: performCloseConnection
 			, EstablishTcpConnection: function(message) {
 					if(this._connectingPhase !== 'EndPointDiscovery') return
 
@@ -47,10 +41,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 				}
 			}
 		, Connected: {
-				CloseConnection: function(message, cb) {
-					this._state = states['Closed']
-					cb(null)
-				}
+				CloseConnection: performCloseConnection
 			, EstablishTcpConnection: noOp
 			, StartConnection: function(message, cb) {
 					cb(null)
@@ -66,6 +57,14 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			}
 			, TcpConnectionEstablished: noOp
 		}
+
+function performCloseConnection(message, cb) {
+	this._setState('Closed')
+	this._closeTcpConnection(message.reason, function(err) {
+
+	})
+	cb(null)
+}
 
 function noOp(message, cb) {
 	cb && cb(null)
@@ -93,6 +92,17 @@ function EsConnectionLogicHandler() {
 	this._connectingPhase = 'Invalid'
 }
 util.inherits(EsConnectionLogicHandler, EventEmitter)
+
+
+EsConnectionLogicHandler.prototype._closeTcpConnection = function(reason, cb) {
+	var me = this
+	if(this._connection === null) return cb(null)
+
+	this._connection.close(reason, function(err) {
+		if(err) return cb(err)
+		this._connection = null
+	})
+}
 
 EsConnectionLogicHandler.prototype._discoverEndPoint = function(cb) {
 	if(!this.isInState('Connecting')) return cb(null)
