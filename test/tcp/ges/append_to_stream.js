@@ -15,13 +15,7 @@ describe('append to stream', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 3456 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 3456 }, done)
 		})
 	})
 
@@ -202,6 +196,7 @@ describe('append to stream', function() {
 	  	})
 	  	es.on('error', done)
 	  	es.kill()
+	  	done()
   	})
   })
 })

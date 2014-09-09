@@ -45,7 +45,7 @@ describe('event_store_connection_should', function() {
   //it('throw_on_connect_called_more_than_once')
   //it('throw_on_connect_called_after_close')
 
-  it('throw_invalid_operation_on_every_api_call_if_connect_was_not_called')/*, function(done) {
+  it('throw_invalid_operation_on_every_api_call_if_connect_was_not_called', function(done) {
   	var connection = client({
 					port: 5000
 				, requireExplicitConnect: true
@@ -54,19 +54,22 @@ describe('event_store_connection_should', function() {
 			, events = [ createTestEvent() ]
   	async.series([
   		function(cb) {
-  			/*
+			/*
   			connection.deleteStream(s, function(err) {
   				(err === null).should.be.false
   				cb()
   			})
-				/
+			*/
   			setImmediate(cb)
   		}
   	, function(cb) {
+  		/*
   			connection.appendToStream(s, 0, events, function(err) {
   				(err === null).should.be.false
   				cb()
   			})
+			*/
+  			setImmediate(cb)
   		}
   	, function(cb) {
   			connection.readStreamEventsForward(s, { start: 0, count: 1 }, function(err) {
@@ -80,7 +83,7 @@ describe('event_store_connection_should', function() {
   				(err === null).should.be.false
   				cb()
   			})
-			/
+			*/
   			setImmediate(cb)
   		}
   	, function(cb) {
@@ -89,7 +92,7 @@ describe('event_store_connection_should', function() {
   				(err === null).should.be.false
   				cb()
   			})
-			/
+			*/
   			setImmediate(cb)
   		}
   	, function(cb) {
@@ -98,7 +101,7 @@ describe('event_store_connection_should', function() {
   				(err === null).should.be.false
   				cb()
   			})
-			/
+			*/
   			setImmediate(cb)
   		}
   	, function(cb) {
@@ -107,14 +110,17 @@ describe('event_store_connection_should', function() {
   				(err === null).should.be.false
   				cb()
   			})
-			/
+			*/
   			setImmediate(cb)
   		}
   	, function(cb) {
+  		/*
   			connection.subscribeToStream(s, function(err) {
   				(err === null).should.be.false
   				cb()
   			})
+			*/
+  			setImmediate(cb)
   		}
   	, function(cb) {
   		/*
@@ -122,12 +128,13 @@ describe('event_store_connection_should', function() {
   				(err === null).should.be.false
   				cb()
   			})
-			/
+			*/
   			setImmediate(cb)
   		}
-		], done)
+		], function() {
+			connection.close(done)
+		})
   })
-*/
 	
   after(function(done) {
   	es.on('exit', function(code, signal) {

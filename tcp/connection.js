@@ -147,40 +147,7 @@ function EsTcpConnection(socket, endPoint) {
 	EventEmitter.call(this)
 
 	var me = this
-		, receiver = messageReceiver(socket)
-		, sender = messageSender(socket)
 
-	socket.on('connect', function() {
-		//me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
-	})
-
-	socket.on('error', function(err) {
-		//console.log('error in old socket', err)
-		//me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
-	})
-
-	receiver.on('message', function(message) {
-		//console.log('Received message: ', message.messageName)
-  	var handler = commandHandlers[message.messageName]
-	  if(!handler) return
-	  
-	  var correlationId = message.correlationId
-			, waitingCallback = me._callbacks[correlationId] || me._subscriptions[correlationId]
-			, toSend = handler(correlationId, message.payload, waitingCallback)
-		if(toSend) {
-			sender.send(toSend)
-		}
-		if(waitingCallback) {
-			delete me._callbacks[correlationId]
-		}
-	})
-/*
-	socket.on('end', function() {
-	  console.log('client disconnected')
-	})
-*/
-
-	this._sender = sender
 	this._callbacks = {}
 	this._subscriptions = {}
 	this._endPoint = endPoint
@@ -202,22 +169,12 @@ EsTcpConnection.prototype.appendToStream = function(streamName, expectedVersion,
 		events = [ events ]
 	}
 
-  var correlationId = uuid.v4()
-	this._storeCallback(correlationId, cb)
-
-	this._sender.send({
-		messageName: 'WriteEvents'
-	, correlationId: correlationId
-	, payload: {
-			name: 'WriteEvents'
-		, data: {
-				event_stream_id: streamName
-			, expected_version: expectedVersion
-			, events: events.map(toEventStoreEvent)
-			, require_master: true
-			}
-		}
-	})
+	this.enqueueOperation('WriteEvents', {
+		stream: streamName
+	, expectedVersion: expectedVersion
+	, events: events
+	, requireMaster: false//!!options.requireMaster
+	}, cb)
 }
 
 EsTcpConnection.prototype.close = function(cb) {
@@ -231,6 +188,13 @@ EsTcpConnection.prototype.connect = function() {
 	this._handler.enqueueMessage('StartConnection', {
 		endPoint: this._endPoint
 	})
+}
+
+EsTcpConnection.prototype.enqueueOperation = function(operationName, operationData, cb) {
+	this._handler.enqueueMessage('StartOperation', {
+		name: operationName
+	, data: operationData
+	}, cb)
 }
 
 EsTcpConnection.prototype.isInState = function(stateName) {
@@ -271,23 +235,14 @@ EsTcpConnection.prototype.readStreamEventsForward = function(streamName, options
 		})
 		return
 	}
-  var correlationId = uuid.v4()
-	this._storeCallback(correlationId, cb)
 
-  this._sender.send({
-  	messageName: 'ReadStreamEventsForward'
-  , correlationId: correlationId
-  , payload: {
-  		name: 'ReadStreamEvents'
-  	, data: {
-				event_stream_id: streamName
-			, from_event_number: options.start
-			, max_count: options.count
-			, resolve_link_tos: !!options.resolveLinkTos
-			, require_master: !!options.requireMaster
-			}
-		}
-	})
+	this.enqueueOperation('ReadStreamEventsForward', {
+		stream: streamName
+	, start: options.start
+	, count: options.count
+	, resolveLinkTos: !!options.resolveLinkTos
+	, requireMaster: !!options.requireMaster
+	}, cb)
 }
 
 EsTcpConnection.prototype.subscribeToStream = function(stream, resolveLinkTos) {

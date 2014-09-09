@@ -17,13 +17,7 @@ describe('read event stream forward should', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 2345 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 2345 }, done)
 		})
 	})
 
