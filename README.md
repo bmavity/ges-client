@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/bmavity/ges-client.png?label=ready&title=Ready)](https://waffle.io/bmavity/ges-client)
 ges-client
 =======
 
