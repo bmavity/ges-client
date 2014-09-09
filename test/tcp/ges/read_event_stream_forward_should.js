@@ -196,10 +196,13 @@ describe('read event stream forward should', function() {
   })
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
+	  	es.kill()
   	})
-  	es.kill()
   })
 })
 

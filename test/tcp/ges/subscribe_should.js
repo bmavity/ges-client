@@ -84,10 +84,12 @@ describe('subscribe_should', function() {
     //var stream = 'subscribe_should_catch_created_and_deleted_events_as_well'
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
+	  	es.kill()
   	})
-  	es.on('error', done)
-  	es.kill()
   })
 })

@@ -326,20 +326,12 @@ describe('appending_to_implicitly_created_stream', function() {
 	})
 
   after(function(done) {
-  	var ended = false
-  	function endClean() {
-  		if(ended) return
-  		ended = true
-  		done()
-  	}
-  	try {
-	  	es.on('exit', endClean)
-	  	es.on('error', endClean)
-	  	connection.on('error', endClean)
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
 	  	es.kill()
-  	}
-  	finally {
-  		endClean()
-  	}
+  	})
   })
 })

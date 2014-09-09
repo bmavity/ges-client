@@ -49,10 +49,12 @@ describe('appending_to_implicitly_created_stream', function() {
     //var streamId = 'idempotency_is_correct_for_explicit_transactions_with_expected_version_any'
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
+	  	es.kill()
   	})
-  	es.on('error', done)
-  	es.kill()
   })
 })

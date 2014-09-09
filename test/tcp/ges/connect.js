@@ -18,7 +18,9 @@ describe('connect', function() {
 			connection = client({ port: 1234 })
 
 			connection.on('connect', function() {
-				done()
+				connection.close(function() {
+					done()
+				})
 			})
 
 			connection.on('error', done)
@@ -51,7 +53,9 @@ describe('not_connected_tests', function() {
 			connection = client({ port: 1234 })
 
 			connection.on('connect', function() {
-				done()
+				connection.close(function() {
+					done()
+				})
 			})
 
 			connection.on('error', done)
