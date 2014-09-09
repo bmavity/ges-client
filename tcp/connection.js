@@ -2,6 +2,7 @@ var net = require('net')
 	, EventEmitter = require('events').EventEmitter
 	, util = require('util')
 	, uuid = require('node-uuid')
+	, connectionLogicHandler = require('./connectionLogicHandler')
 	, messageReceiver = require('./messageReceiver')
 	, messageSender = require('./messageSender')
 	, parser = require('./messageParser')
@@ -109,17 +110,40 @@ function parseEventStoreEvent(rawEvent) {
 module.exports = createConnection
 
 
-function createConnection(opts) {
+function createConnection(opts, cb) {
 	opts = opts || {}
 	opts.host = opts.host || '127.0.0.1'
 	opts.port = opts.port || 1113
 	var socket = net.connect(opts.port, opts.host)
+		, connection = new EsTcpConnection(socket, {
+				host: opts.host
+			, port: opts.port
+			})
+		, onConnect = function() {
+				connection.removeListener('connect', onConnect)
+				connection.removeListener('error', onErr)
+				cb(null, connection)
+			}
+		, onErr = function(err) {
+				connection.removeListener('connect', onConnect)
+				connection.removeListener('error', onErr)
+				cb(err)
+			}
 
-	return new EsTcpConnection(socket)
+	if(cb) {
+		connection.on('connect', onConnect)
+		connection.on('error', onErr)
+	}
+
+	if(!opts.requireExplicitConnection) {
+		connection.connect()
+	}
+
+	return connection
 }
 
 
-function EsTcpConnection(socket) {
+function EsTcpConnection(socket, endPoint) {
 	EventEmitter.call(this)
 
 	var me = this
@@ -127,7 +151,7 @@ function EsTcpConnection(socket) {
 		, sender = messageSender(socket)
 
 	socket.on('connect', function() {
-		me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
+		//me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
 	})
 
 	socket.on('error', function() {
@@ -158,6 +182,13 @@ function EsTcpConnection(socket) {
 	this._sender = sender
 	this._callbacks = {}
 	this._subscriptions = {}
+	this._endPoint = endPoint
+
+	this._handler = connectionLogicHandler()
+
+	this._handler.on('connect', function(args) {
+		me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
+	})
 }
 util.inherits(EsTcpConnection, EventEmitter)
 
@@ -186,6 +217,23 @@ EsTcpConnection.prototype.appendToStream = function(streamName, expectedVersion,
 			}
 		}
 	})
+}
+
+EsTcpConnection.prototype.close = function(cb) {
+	this._handler.enqueueMessage('CloseConnection', {
+		reason: 'Connection close requested by client.'
+	, exception: null
+	}, cb)
+}
+
+EsTcpConnection.prototype.connect = function() {
+	this._handler.enqueueMessage('StartConnection', {
+		endPoint: this._endPoint
+	})
+}
+
+EsTcpConnection.prototype.isInState = function(stateName) {
+	return this._handler.isInState(stateName)
 }
 
 EsTcpConnection.prototype.readAllEventsForward = function(cb) {

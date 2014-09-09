@@ -23,6 +23,6 @@ Object.defineProperties(expectedVersion, {
 })
 
 
-function createConnection(opts) {
-	return tcpConnect(opts)
+function createConnection(opts, cb) {
+	return tcpConnect(opts, cb)
 }
