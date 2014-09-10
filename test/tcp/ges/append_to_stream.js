@@ -196,7 +196,6 @@ describe('append to stream', function() {
 	  	})
 	  	es.on('error', done)
 	  	es.kill()
-	  	done()
   	})
   })
 })
