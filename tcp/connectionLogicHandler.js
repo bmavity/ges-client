@@ -293,7 +293,7 @@ var uuid = require('node-uuid')
 
 				cb(null, {
 					Status: payload.result
-				, Events: payload.events.map(fromEventStoreEvent)
+				, Events: (payload.events || []).map(fromEventStoreEvent)
 				, NextEventNumber: payload.next_event_number
 				, LastEventNumber: payload.last_event_number
 				, IsEndOfStream: payload.is_end_of_stream
