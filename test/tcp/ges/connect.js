@@ -11,11 +11,11 @@ describe('connect', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 1234 }, function(err, memory) {
+		ges({ tcpPort: 5001 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 1234 })
+			connection = client({ port: 5001 })
 
 			connection.on('connect', function() {
 				connection.close(function() {
@@ -46,11 +46,11 @@ describe('not_connected_tests', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 1234 }, function(err, memory) {
+		ges({ tcpPort: 5001 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 1234 })
+			connection = client({ port: 5001 })
 
 			connection.on('connect', function() {
 				connection.close(function() {
