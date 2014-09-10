@@ -2,12 +2,14 @@ language: node_js
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y protobuf-compiler
+  - sudo apt-get install -y libprotobuf-dev
+  - ls /usr
+  - ls /usr/bin
+  - ls /usr/local
+  - ls /usr/local/bin
   - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.0-rc9.tar.gz -O /tmp/EventStore.tar.gz
   - tar -xvf /tmp/EventStore.tar.gz
   - export ES_BIN=EventStore-OSS-Linux-v3.0.0-rc9
-  - ls 
-  - ls tcp
   - /usr/bin/protoc -o tcp/ges_client.desc tcp/ges_client.proto
 
 node_js:
