@@ -3,16 +3,14 @@ language: node_js
 before_install:
   - sudo apt-get update -qq
   - sudo wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+  - ls /
+  - ls tcp
   - tar -xzvf protobuf-2.5.0.tar.gz
   - cd protobuf-2.5.0 && sudo ./configure --prefix=/usr && sudo make && sudo make install
-  - ls /usr/lib
-  - ls /usr/bin
-  - ls /usr/local
-  - ls /usr/local/bin
   - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.0-rc9.tar.gz -O /tmp/EventStore.tar.gz
   - tar -xvf /tmp/EventStore.tar.gz
   - export ES_BIN=EventStore-OSS-Linux-v3.0.0-rc9
-  - /usr/bin/protoc -o tcp/ges_client.desc tcp/ges_client.proto
+  - /usr/bin/protoc -o tcp/ges_client.desc ./tcp/ges_client.proto
 
 node_js:
   - "0.10"
