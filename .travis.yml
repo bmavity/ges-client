@@ -2,7 +2,9 @@ language: node_js
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -y protobuf
+  - sudo apt-get install -y protobuf-compiler
+  - ls /usr/local/bin
+  - ls /usr/local/lib
   - sudo wget https://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
   - tar -xzvf protobuf-2.5.0.tar.gz
   - cd protobuf-2.5.0 && sudo ./configure --prefix=/usr && sudo make && sudo make install
