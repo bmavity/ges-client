@@ -7,7 +7,7 @@ before_install:
   - tar -xvf /tmp/EventStore.tar.gz
   - export ES_BIN=EventStore-OSS-Linux-v3.0.0-rc9
   - ls 
-  - ls /tcp
+  - ls tcp
   - /usr/bin/protoc -o tcp/ges_client.desc tcp/ges_client.proto
 
 node_js:
