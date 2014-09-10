@@ -8,6 +8,7 @@ before_install:
   - ls /tmp
   - ls
   - export ES_BIN=EventStore-OSS-Linux-v3.0.0-rc9
+  - protoc -o lib/ges_client.desc lib/ges_client.proto
 
 node_js:
   - "0.10"
