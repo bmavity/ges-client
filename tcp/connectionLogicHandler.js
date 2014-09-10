@@ -1,5 +1,6 @@
 var tcpPackageConnection = require('./tcpPackageConnection')
 	, operationsManager = require('./operationsManager')
+	, subscriptionsManager = require('./subscriptionsManager')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
 	, states = {
@@ -13,9 +14,8 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 					this._connectingPhase = 'Reconnecting'
 					this._discoverEndPoint(cb)
 				}
-			, StartOperation: function(operation, cb) {
-					cb(new Error('EventStoreConnection is not active.'))
-				}
+			, StartOperation: raiseNotActive
+			, StartSubscription: raiseNotActive
 			, TcpConnectionEstablished: noOp
 			}
 		, Connecting: {
@@ -48,6 +48,10 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartOperation: function(operation, cb) {
 					this._operations.enqueueOperation(operation, cb)
 				}
+			, StartSubscription: function(subscriptionInfo) {
+					this._subscriptions.enqueueSubscription(subscriptionInfo)
+					cb(null)
+				}
 			, TcpConnectionEstablished: function(message, cb) {
 					if(this._connection !== message.connection || this.isClosed) return cb && cb(null)
 
@@ -65,6 +69,17 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartOperation: function(operation, cb) {
 					this._operations.scheduleOperation(operation, this._connection, cb)
 				}
+			, StartSubscription: function(subscriptionInfo) {
+					var subscriptionItem = {
+								subscription: subscriptionInfo.subscription
+							, name: subscriptionInfo.operation.name
+							, data: subscriptionInfo.operation.data
+							}
+					this._subscriptions.scheduleSubscription(subscriptionItem, this._connection)
+				}
+			, StartConnection: function(message, cb) {
+					cb(null)
+				}
 			, TcpConnectionEstablished: noOp
 			}
 		, Closed: {
@@ -72,11 +87,11 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, EstablishTcpConnection: noOp
 			, HandleTcpPackage: noOp
 			, StartConnection: function(message, cb) {
-					
+					//TODO: ?
+					cb && cb(null)
 				}
-			, StartOperation: function(operation, cb) {
-					cb(new Error('EventStoreConnection has been closed.'))
-				}
+			, StartOperation: raiseClosed
+			, StartSubscription: raiseClosed
 			, TcpConnectionEstablished: noOp
 			}
 		}
@@ -88,6 +103,7 @@ function handlePackage(message) {
 	if(this._connection !== message.connection) return noOp()
 
 	var messageName = message.package.messageName
+		, correlationId = message.package.correlationId
 
 	if(messageName === 'HeartbeatResponseCommand') {
 		console.log(message.package)
@@ -97,19 +113,29 @@ function handlePackage(message) {
 	if(messageName === 'HeartbeatRequestCommand') {
 		this._connection.enqueueSend({
 				messageName: 'HeartbeatResponseCommand'
-			, correlationId: message.package.correlationId
+			, correlationId: correlationId
 		})
 		return
 	}
 
-	var operation = this._operations.getActiveOperation(message.package.correlationId)
+	var operation = this._operations.getActiveOperation(correlationId)
 	if(operation) {
 		var handler = commandHandlers[messageName]
 		if(handler) {
 			handler(message.package, operation.cb)
 		} else {
-			operation.cb(new Error('Handler not availble for operation: ' + messageName + ' with id ' + message.package.correlationId))
+			operation.cb(new Error('Handler not availble for operation: ' + messageName + ' with id ' + correlationId))
 		}
+		return
+	}
+
+	var subscriptionItem = this._subscriptions.getActiveSubscription(correlationId)
+	if(subscriptionItem) {
+		var handler = commandHandlers[messageName]
+		if(handler) {
+			handler(message.package, subscriptionItem.subscription)
+		}
+		return
 	}
 }
 
@@ -118,6 +144,14 @@ function performCloseConnection(message, cb) {
 	this._closeTcpConnection(message.reason, function(err) {
 		cb(null)
 	})
+}
+
+function raiseClosed(operation, cb) {
+	cb(new Error('EventStoreConnection has been closed.'))
+}
+
+function raiseNotActive(operation, cb) {
+	cb(new Error('EventStoreConnection is not active.'))
 }
 
 function noOp(message, cb) {
@@ -140,6 +174,7 @@ function EsConnectionLogicHandler() {
 
 	this._queuedMessages = []
 	this._operations = operationsManager()
+	this._subscriptions = subscriptionsManager()
 
 	this._setState('Init')
 	this._connectingPhase = 'Invalid'
@@ -264,20 +299,21 @@ var uuid = require('node-uuid')
 				, IsEndOfStream: payload.is_end_of_stream
 				})
 			}
-    , 'SubscriptionConfirmation': function(correlationId, payload, subscription) {
-				payload = parser.parse('SubscriptionConfirmation', payload)
+    , 'SubscriptionConfirmation': function(message, subscription) {
+				payload = parser.parse('SubscriptionConfirmation', message.payload)
 				//console.log('SubscriptionConfirmation', correlationId, payload)
 			}
-    , 'StreamEventAppeared': function(correlationId, payload, subscription) {
-				payload = parser.parse('StreamEventAppeared', payload)
+    , 'StreamEventAppeared': function(message, subscription) {
+				payload = parser.parse('StreamEventAppeared', message.payload)
 
 				//console.log('StreamEventAppeared', correlationId, payload)
-				subscription.emit('event')
+				subscription.eventAppeared(payload)
 			}
-    , 'SubscriptionDropped': function(correlationId, payload, subscription) {
-				payload = parser.parse('SubscriptionDropped', payload)
+    , 'SubscriptionDropped': function(message, subscription) {
+				payload = parser.parse('SubscriptionDropped', message.payload)
+				console.log(payload)
 				//console.log('SubscriptionDropped', correlationId, payload)
-				subscription.emit('dropped')
+				subscription.dropped()
 			}
 		, 'WriteEventsCompleted': function(message, cb) {
 				payload = parser.parse('WriteEventsCompleted', message.payload)

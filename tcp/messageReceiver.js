@@ -54,6 +54,6 @@ MessageReceiver.prototype._handleIncompletePacket = function(packet, expectedPac
 
 MessageReceiver.prototype._handleMultiplePackets = function(packet, expectedPacketLength) {
   //console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
-  this._receiveMessage(packet.slice(0, expectedPacketLength))
-  this._receiveMessage(packet.slice(expectedPacketLength))
+  this.processData(packet.slice(0, expectedPacketLength))
+  this.processData(packet.slice(expectedPacketLength))
 }

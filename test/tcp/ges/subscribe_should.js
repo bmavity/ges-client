@@ -15,13 +15,7 @@ describe('subscribe_should', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 1234 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 1234 }, done)
 		})
 	})
 
