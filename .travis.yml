@@ -5,7 +5,7 @@ before_install:
   - sudo apt-get install -y libprotobuf7 libprotoc7 libprotobuf-dev
   - sudo apt-cache search protoc
   - sudo apt-cache search protobuf
-  - sudo dpkg libprotoc7
+  - sudo dpkg -L libprotoc7
   - sudo apt-get install apt-file
   - sudo apt-file list libprotoc7
   - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.0-rc9.tar.gz -O /tmp/EventStore.tar.gz
