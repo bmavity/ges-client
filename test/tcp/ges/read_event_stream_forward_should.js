@@ -1,10 +1,12 @@
-var client = require('../../')
+var client = require('../../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
-	, createTestEvent = require('../createTestEvent')
-	, range = require('../range')
+	, createTestEvent = require('../../createTestEvent')
+	, range = require('../../range')
+	, streamWriter = require('../../streamWriter')
+	, eventStreamCounter = require('../../eventStreamCounter')
 
-require('../shouldExtensions')
+require('../../shouldExtensions')
 
 describe('read event stream forward should', function() {
 	var es
@@ -15,13 +17,7 @@ describe('read event stream forward should', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 2345 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 2345 }, done)
 		})
 	})
 
@@ -194,10 +190,13 @@ describe('read event stream forward should', function() {
   })
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
+	  	es.kill()
   	})
-  	es.kill()
   })
 })
 

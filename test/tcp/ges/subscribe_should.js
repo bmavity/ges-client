@@ -1,10 +1,10 @@
-var client = require('../../')
+var client = require('../../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
-	, createTestEvent = require('../createTestEvent')
-	, range = require('../range')
-	, streamWriter = require('../streamWriter')
-	, eventStreamCounter = require('../eventStreamCounter')
+	, createTestEvent = require('../../createTestEvent')
+	, range = require('../../range')
+	, streamWriter = require('../../streamWriter')
+	, eventStreamCounter = require('../../eventStreamCounter')
 
 describe('subscribe_should', function() {
 	var es
@@ -15,13 +15,7 @@ describe('subscribe_should', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 1234 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 1234 }, done)
 		})
 	})
 
@@ -84,10 +78,12 @@ describe('subscribe_should', function() {
     //var stream = 'subscribe_should_catch_created_and_deleted_events_as_well'
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
+	  	es.kill()
   	})
-  	es.on('error', done)
-  	es.kill()
   })
 })

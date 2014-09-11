@@ -1,10 +1,10 @@
-var client = require('../../')
+var client = require('../../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
-	, createTestEvent = require('../createTestEvent')
-	, range = require('../range')
-	, streamWriter = require('../streamWriter')
-	, eventStreamCounter = require('../eventStreamCounter')
+	, createTestEvent = require('../../createTestEvent')
+	, range = require('../../range')
+	, streamWriter = require('../../streamWriter')
+	, eventStreamCounter = require('../../eventStreamCounter')
 
 describe('appending_to_implicitly_created_stream', function() {
 	var es
@@ -15,14 +15,7 @@ describe('appending_to_implicitly_created_stream', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 4567 })
-
-			connection.on('connect', function() {
-				connection.removeAllListeners()
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 4567 }, done)
 		})
 	})
 
@@ -326,20 +319,12 @@ describe('appending_to_implicitly_created_stream', function() {
 	})
 
   after(function(done) {
-  	var ended = false
-  	function endClean() {
-  		if(ended) return
-  		ended = true
-  		done()
-  	}
-  	try {
-	  	es.on('exit', endClean)
-	  	es.on('error', endClean)
-	  	connection.on('error', endClean)
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
 	  	es.kill()
-  	}
-  	finally {
-  		endClean()
-  	}
+  	})
   })
 })

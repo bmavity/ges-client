@@ -6,16 +6,10 @@ var util = require('util')
 module.exports = MessageReceiver
 
 
-function MessageReceiver(socket) {
+function MessageReceiver() {
 	if(!(this instanceof MessageReceiver)) {
-		return new MessageReceiver(socket)
+		return new MessageReceiver()
 	}
-
-	var me = this
-
-	socket.on('data', function(data) {
-		me._receiveMessage(data)
-	})
 
 	EventEmitter.call(this)
 
@@ -23,7 +17,7 @@ function MessageReceiver(socket) {
 }
 util.inherits(MessageReceiver, EventEmitter)
 
-MessageReceiver.prototype._receiveMessage = function(data) {
+MessageReceiver.prototype.processData = function(data) {
 	if(this._incompletePacket) {
 		data = this._combineWithIncompletePacket(data)
   }
@@ -60,6 +54,6 @@ MessageReceiver.prototype._handleIncompletePacket = function(packet, expectedPac
 
 MessageReceiver.prototype._handleMultiplePackets = function(packet, expectedPacketLength) {
   //console.log("Packet too big, trying to split into multiple packets (wanted: " + expectedPacketLength + " bytes, got: " + packet.length + " bytes)")
-  this._receiveMessage(packet.slice(0, expectedPacketLength))
-  this._receiveMessage(packet.slice(expectedPacketLength))
+  this.processData(packet.slice(0, expectedPacketLength))
+  this.processData(packet.slice(expectedPacketLength))
 }

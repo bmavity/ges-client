@@ -2,12 +2,18 @@ language: node_js
 
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq libprotobuf-dev
+  - sudo apt-get install -y libprotobuf7 libprotoc7 libprotobuf-dev
+  - sudo apt-cache search protoc
+  - sudo apt-cache search protobuf
+  - sudo dpkg -L libprotoc7
+  - sudo apt-get install apt-file
+  - sudo apt-file update
+  - sudo apt-file list libprotoc7
   - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.0-rc9.tar.gz -O /tmp/EventStore.tar.gz
   - tar -xvf /tmp/EventStore.tar.gz
-  - ls /tmp
-  - ls
   - export ES_BIN=EventStore-OSS-Linux-v3.0.0-rc9
+  - ls /usr/bin
+  - ls /usr/local/bin
 
 node_js:
   - "0.10"

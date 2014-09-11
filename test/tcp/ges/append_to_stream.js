@@ -1,8 +1,10 @@
-var client = require('../../')
+var client = require('../../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
-	, createTestEvent = require('../createTestEvent')
-	, range = require('../range')
+	, createTestEvent = require('../../createTestEvent')
+	, range = require('../../range')
+	, streamWriter = require('../../streamWriter')
+	, eventStreamCounter = require('../../eventStreamCounter')
 
 describe('append to stream', function() {
 	var es
@@ -13,13 +15,7 @@ describe('append to stream', function() {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 3456 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 3456 }, done)
 		})
 	})
 
@@ -194,11 +190,13 @@ describe('append to stream', function() {
   })
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
+	  	es.kill()
   	})
-  	es.on('error', done)
-  	es.kill()
   })
 })
 
