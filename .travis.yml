@@ -6,6 +6,10 @@ before_install:
   - wget http://download.geteventstore.com/binaries/EventStore-OSS-Linux-v3.0.0-rc9.tar.gz -O /tmp/EventStore.tar.gz
   - tar -xvf /tmp/EventStore.tar.gz
   - export ES_BIN=EventStore-OSS-Linux-v3.0.0-rc9
+  - ls /usr
+  - ls /usr/bin
+  - ls /usr/local
+  - ls /usr/local/bin
   - protoc -o tcp/ges_client.desc tcp/ges_client.proto
 
 node_js:
