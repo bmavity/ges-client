@@ -18,8 +18,15 @@ function OperationItem(operation) {
 	}
 
 	this.finish = function(message) {
-		var payload = messageParser.parse(operation.responseType, message.payload)
-			, cb = operation.cb
+		var cb = operation.cb
+			, payload
+			
+		try {
+			payload = messageParser.parse(operation.responseType, message.payload)
+		}
+		catch(ex) {
+			return cb(ex)
+		}
 
 		if(payload.result === 'WrongExpectedVersion') {
 			return cb(new Error(payload.message))
@@ -61,6 +68,31 @@ var operations = {
 			}
 		}
 	}
+, ReadEvent: function(operationData) {
+		return {
+			cb: operationData.cb
+		, requestType: 'ReadEvent'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('ReadEvent', {
+					event_stream_id: operationData.stream
+				, event_number: payload.eventNumber
+				, resolve_link_tos: !!payload.resolveLinkTos
+				, require_master: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'ReadEventCompleted'
+		, toResponseObject: function(payload) {
+				return {
+					Status: payload.result
+				, Event: payload.result === 'Success' ? fromEventStoreEvent(payload.event) : null
+				, Stream: operationData.stream
+				, EventNumber: operationData.data.eventNumber
+				}
+			}
+		}
+	}
 , ReadStreamEventsForward: function(operationData) {
 		return {
 			cb: operationData.cb
@@ -78,28 +110,6 @@ var operations = {
 	  	}
 		, responseType: 'ReadStreamEventsCompleted'
 		, toResponseObject: function(payload) {
-				//payload = parser.parse('ReadStreamEventsCompleted', message)
-
-		/*
-			public readonly SliceReadStatus Status;
-		  public readonly string Stream;
-		  public readonly int FromEventNumber;
-		  public readonly ReadDirection ReadDirection;
-		  public readonly ResolvedEvent[] Events;
-		  public readonly int NextEventNumber;
-		  public readonly int LastEventNumber;
-		  public readonly bool IsEndOfStream;
-
-
-		  repeated ResolvedIndexedEvent events = 1;
-			required ReadStreamResult result = 2;
-			required int32 next_event_number = 3;
-			required int32 last_event_number = 4;
-			required bool is_end_of_stream = 5;
-			required int64 last_commit_position = 6;
-
-			optional string error = 7;
-		*/
 				var events = payload.events || []
 				return {
 					Status: payload.result
@@ -115,14 +125,6 @@ var operations = {
 
 
 function toEventStoreEvent(evt) {
-	/*
-	required bytes event_id = 1;
-	required string event_type = 2;
-	required int32 data_content_type = 3;
-	required int32 metadata_content_type = 4;
-	required bytes data = 5;
-	optional bytes metadata = 6;
-	*/
 	return {
 		event_id: uuid.parse(evt.EventId, new Buffer(16))
 	, event_type: evt.Type
@@ -134,29 +136,16 @@ function toEventStoreEvent(evt) {
 }
 
 function fromEventStoreEvent(rawEvent) {
-	/*
-	required EventRecord event = 1;
-	optional EventRecord link = 2;
-	*/
+	var recordedEvent = toRecordedEvent(rawEvent.event)
+		, recordedLink = rawEvent.link ? toRecordedEvent(rawEvent.link) : null
 	return {
-		Event: toRecordedEvent(rawEvent.event)
-	, Link: rawEvent.link ? toRecordedEvent(rawEvent.link) : null
+		Event: recordedEvent
+	, Link: recordedLink
+	, OriginalEvent: recordedLink || recordedEvent
 	}
 }
 
 function toRecordedEvent(systemRecord) {
-	/*
-	required string event_stream_id = 1;
-	required int32 event_number = 2;
-	required bytes event_id = 3;
-	required string event_type = 4;
-	required int32 data_content_type = 5;
-	required int32 metadata_content_type = 6;
-	required bytes data = 7;
-	optional bytes metadata = 8;
-	optional int64 created = 9;
-	optional int64 created_epoch = 10;
-	*/
 	var recordedEvent = {}
 		, metadata = systemRecord.hasOwnProperty('metadata') || systemRecord.metadata !== null ? systemRecord.metadata : new Buffer(0)
 		, data = systemRecord.data === null ? new Buffer(0) : systemRecord.data

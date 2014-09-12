@@ -15,9 +15,6 @@ Object.defineProperties(module.exports, {
 , maxRecordCount: { value: 2147483647 }
 , streamPosition: { value: streamPosition }
 , createEventData: { value: eventData }
-, createStreamMetadata: { value: streamMetadata }
-, systemEventTypes: { value: systemEventTypes }
-, systemStreams: { value: systemStreams }
 })
 
 Object.defineProperties(expectedVersion, {
