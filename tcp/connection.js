@@ -1,7 +1,12 @@
 var util = require('util')
+	, uuid = require('node-uuid')
 	, EventEmitter = require('events').EventEmitter
 	, connectionLogicHandler = require('./connectionLogicHandler')
 	, createSubscription = require('./subscription')
+	, systemStreams = require('./systemStreams')
+	, eventData = require('../eventData')
+	, systemEventTypes = require('./systemEventTypes')
+	, rawStreamMetadata = require('./rawStreamMetadataResult')
 
 module.exports = createConnection
 
@@ -90,6 +95,21 @@ EsTcpConnection.prototype.enqueueOperation = function(operationData) {
 	})
 }
 
+EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData, cb) {
+	var readData = {
+				eventNumber: -1
+			, auth: getData.auth
+			}
+	this.readEvent(systemStreams.metastreamOf(stream), readData, function(err, result) {
+		if(err) return cb(err)
+
+		var evt = result.Event.OriginalEvent
+		if(result.Status === 'Success') {
+			cb(null, rawStreamMetadata(stream, false, evt.EventNumber, evt.Data))
+		}
+	})
+}
+
 EsTcpConnection.prototype.isInState = function(stateName) {
 	return this._handler.isInState(stateName)
 }
@@ -161,17 +181,21 @@ EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, c
 	})
 }
 
-/*
-EsTcpConnection.prototype.setStreamMetadata = function(stream, expectedMetastreamVersion, metadata, cb) {
-	this.enqueueOperation('AppendToStream', {
-		stream: stream
-	, start: options.start
-	, count: options.count
-	, resolveLinkTos: !!options.resolveLinkTos
-	, requireMaster: !!options.requireMaster
-	}, cb)
+EsTcpConnection.prototype.setStreamMetadata = function(stream, setData, cb) {
+	var metadata = new Buffer(setData.metadata ? JSON.stringify(setData.metadata) : 0)
+		, metaevent = eventData(uuid.v4(), systemEventTypes.streamMetadata, true, metadata)
+		, appendData = {
+				expectedVersion: setData.expectedMetastreamVersion
+			, events: [ metaevent ]
+			}
+	this.enqueueOperation({
+		name: 'AppendToStream'
+	, stream: systemStreams.metastreamOf(stream)
+	, auth: setData.auth
+	, data: appendData
+	, cb: cb
+	})
 }
-*/
 
 EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
 	subscriptionData = subscriptionData || {}

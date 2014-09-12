@@ -1,6 +1,18 @@
 var should = require('should')
 
 should.use(function(should, Assertion) {
+  Assertion.add('matchBuffer', function(val, description) {
+    var actual = new Buffer(this.obj.length)
+    	, expected = new Buffer(val)
+
+    this.obj.copy(actual)
+    val.copy(expected)
+
+    this.params = { operator: 'to match buffer', expected: expected, showDiff: false, message: description }
+
+    actual.should.eql(expected)
+  })
+
   Assertion.add('matchEvents', function(val, description) {
     var actual = getArray(this.obj).map(normalizeEvent)
     	, expected = getArray(val).map(normalizeEvent)
