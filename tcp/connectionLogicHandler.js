@@ -29,16 +29,24 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 								endPoint: this._endPoint
 							})
 					connection.on('connect', function() {
-						me.enqueueMessage('TcpConnectionEstablished', {
-							connection: connection
+						me.enqueueMessage({
+							name: 'TcpConnectionEstablished'
+						, data: {
+								connection: connection
+							}
 						})
 					})
+
 					connection.on('package', function(data) {
-						me.enqueueMessage('HandleTcpPackage', {
-							connection: data.connection
-						, package: data.package
+						me.enqueueMessage({
+							name: 'HandleTcpPackage'
+						, data: {
+								connection: data.connection
+							, package: data.package
+							}
 						})
 					})
+					
 					this._connection = connection
 				}
 			, HandleTcpPackage: handlePackage
@@ -50,7 +58,6 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 				}
 			, StartSubscription: function(subscriptionInfo) {
 					this._subscriptions.enqueueSubscription(subscriptionInfo)
-					cb(null)
 				}
 			, TcpConnectionEstablished: function(message, cb) {
 					if(this._connection !== message.connection || this.isClosed) return cb && cb(null)
@@ -198,18 +205,19 @@ EsConnectionLogicHandler.prototype._discoverEndPoint = function(cb) {
 
 	this._connectingPhase = 'EndPointDiscovery'
 	//TODO: True endpoint discovery
-	this.enqueueMessage('EstablishTcpConnection', {
-		endPoint: this._endPoint
-	}, cb)
-}
-
-EsConnectionLogicHandler.prototype.enqueueMessage = function(messageName, message, cb) {
-	var me = this
-	this._queuedMessages.push({
-		messageName: messageName
-	, message: message
+	this.enqueueMessage({
+		name: 'EstablishTcpConnection'
+	, data: {
+			endPoint: this._endPoint
+		}
 	, cb: cb
 	})
+}
+
+EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
+	var me = this
+
+	this._queuedMessages.push(message)
 
 	setImmediate(function() {
 		me._processNextMessage()
@@ -235,8 +243,8 @@ EsConnectionLogicHandler.prototype._processNextMessage = function() {
 
 	if(!next) return 
 	//if(!handler) return next.cb && next.cb(new Error())
-	var handler = this._state[next.messageName]
-	handler.call(this, next.message, next.cb)
+	var handler = this._state[next.name]
+	handler.call(this, next.data, next.cb)
 
 	setImmediate(function() {
 		me._processNextMessage()

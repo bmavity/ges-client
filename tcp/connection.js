@@ -64,20 +64,30 @@ EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
 }
 
 EsTcpConnection.prototype.close = function(cb) {
-	this._handler.enqueueMessage('CloseConnection', {
-		reason: 'Connection close requested by client.'
-	, exception: null
-	}, cb)
+	this._handler.enqueueMessage({
+		name: 'CloseConnection'
+	, data: {
+			reason: 'Connection close requested by client.'
+		, exception: null
+		}
+	, cb: cb
+	})
 }
 
 EsTcpConnection.prototype.connect = function() {
-	this._handler.enqueueMessage('StartConnection', {
-		endPoint: this._endPoint
+	this._handler.enqueueMessage({
+		name: 'StartConnection'
+	, data: {
+			endPoint: this._endPoint
+		}
 	})
 }
 
 EsTcpConnection.prototype.enqueueOperation = function(operationData) {
- 	this._handler.enqueueMessage('StartOperation', operationData)
+	this._handler.enqueueMessage({
+		name: 'StartOperation'
+	, data: operationData
+	})
 }
 
 EsTcpConnection.prototype.isInState = function(stateName) {
@@ -140,17 +150,19 @@ EsTcpConnection.prototype.setStreamMetadata = function(stream, expectedMetastrea
 }
 */
 
-EsTcpConnection.prototype.subscribeToStream = function(stream, resolveLinkTos) {
+EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
 	var subscription = createSubscription()
 
-	this._handler.enqueueMessage('StartSubscription', {
-	  subscription: subscription
-	, operation: {
+	this._handler.enqueueMessage({
+		name: 'StartSubscription'
+	, data: {
 			name: 'SubscribeToStream'
-		, data: {
-				stream: stream
-			, resolveLinkTos: !!resolveLinkTos
-			}
+		, stream: stream
+		, auth: subscriptionData.auth
+		, data: subscriptionData
+		, subscription: subscription
 		}
 	})
 
