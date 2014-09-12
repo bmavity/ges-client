@@ -115,6 +115,29 @@ EsTcpConnection.prototype.readAllEventsForward = function(cb) {
 	})
 }
 
+EsTcpConnection.prototype.readEvent = function(stream, readData, cb) {
+	if(!stream) {
+		return setImmediate(function() {
+			cb(new Error('Argument: streamId cannot be null or empty.'))
+		})
+	}
+
+	if(readData.eventNumber < -1) {
+		setImmediate(function() {
+			cb(new Error('Argument: eventNumber cannot be less than -1.'))
+		})
+		return
+	}
+
+	this.enqueueOperation({
+		name: 'ReadEvent'
+	, stream: stream
+	, auth: readData.auth
+	, data: readData
+	, cb: cb
+	})
+}
+
 EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, cb) {
 	if(readData.start < 0) {
 		setImmediate(function() {
