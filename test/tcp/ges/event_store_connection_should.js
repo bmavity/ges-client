@@ -48,7 +48,7 @@ describe('event_store_connection_should', function() {
   it('throw_invalid_operation_on_every_api_call_if_connect_was_not_called', function(done) {
   	var connection = client({
 					port: 5000
-				, requireExplicitConnect: true
+				, requireExplicitConnection: true
 				})
   		, s = 'stream'
 			, events = [ createTestEvent() ]

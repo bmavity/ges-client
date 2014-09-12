@@ -22,10 +22,9 @@ function OperationItem(operation) {
 			, cb = operation.cb
 
 		if(payload.result === 'WrongExpectedVersion') {
-			console.log(operation.data(), message)
 			return cb(new Error(payload.message))
 		}
-
+		
 		cb(null, operation.toResponseObject(payload))
 	}
 }
@@ -36,7 +35,6 @@ var operations = {
 	AppendToStream: function(operationData) {
 		return {
 		  cb: operationData.cb
-		, data: function() { return operationData.name + ': ' + operationData.stream }
 		, requestType: 'WriteEvents'
 		, toRequestPayload: function() {
 				var payload = operationData.data
@@ -66,7 +64,6 @@ var operations = {
 , ReadStreamEventsForward: function(operationData) {
 		return {
 			cb: operationData.cb
-		, data: function() { return operationData.name }
 		, requestType: 'ReadStreamEventsForward'
 		, toRequestPayload: function(payload) {
 				var payload = operationData.data
@@ -104,7 +101,6 @@ var operations = {
 			optional string error = 7;
 		*/
 				var events = payload.events || []
-
 				return {
 					Status: payload.result
 				, Events: events.map(fromEventStoreEvent)

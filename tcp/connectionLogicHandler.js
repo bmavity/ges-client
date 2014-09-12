@@ -46,7 +46,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 							}
 						})
 					})
-					
+
 					this._connection = connection
 				}
 			, HandleTcpPackage: handlePackage
@@ -56,8 +56,8 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartOperation: function(operation, cb) {
 					this._operations.enqueueOperation(operation, cb)
 				}
-			, StartSubscription: function(subscriptionInfo) {
-					this._subscriptions.enqueueSubscription(subscriptionInfo)
+			, StartSubscription: function(message) {
+					this._subscriptions.enqueueSubscription(message)
 				}
 			, TcpConnectionEstablished: function(message, cb) {
 					if(this._connection !== message.connection || this.isClosed) return cb && cb(null)
@@ -76,13 +76,8 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartOperation: function(operation) {
 					this._operations.scheduleOperation(operation, this._connection)
 				}
-			, StartSubscription: function(subscriptionInfo) {
-					var subscriptionItem = {
-								subscription: subscriptionInfo.subscription
-							, name: subscriptionInfo.operation.name
-							, data: subscriptionInfo.operation.data
-							}
-					this._subscriptions.scheduleSubscription(subscriptionItem, this._connection)
+			, StartSubscription: function(message) {
+					this._subscriptions.scheduleSubscription(message, this._connection)
 				}
 			, StartConnection: function(message, cb) {
 					cb(null)
@@ -131,12 +126,10 @@ function handlePackage(message) {
 		return
 	}
 
-	var subscriptionItem = this._subscriptions.getActiveSubscription(correlationId)
-	if(subscriptionItem) {
+	var subscription = this._subscriptions.getActiveSubscription(correlationId)
+	if(subscription) {
 		var handler = commandHandlers[messageName]
-		if(handler) {
-			handler(message.package, subscriptionItem.subscription)
-		}
+		handler(message.package, subscription)
 		return
 	}
 }
@@ -148,12 +141,12 @@ function performCloseConnection(message, cb) {
 	})
 }
 
-function raiseClosed(operation, cb) {
-	cb(new Error('EventStoreConnection has been closed.'))
+function raiseClosed(operation) {
+	operation.cb(new Error('EventStoreConnection has been closed.'))
 }
 
 function raiseNotActive(operation, cb) {
-	cb(new Error('EventStoreConnection is not active.'))
+	operation.cb(new Error('EventStoreConnection is not active.'))
 }
 
 function noOp(message, cb) {
@@ -283,7 +276,6 @@ var uuid = require('node-uuid')
 			}
     , 'SubscriptionDropped': function(message, subscription) {
 				payload = parser.parse('SubscriptionDropped', message.payload)
-				console.log(payload)
 				//console.log('SubscriptionDropped', correlationId, payload)
 				subscription.dropped()
 			}

@@ -18,19 +18,3 @@ function parse(messageName, payload) {
 function serialize(messageName, message) {
 	return schema.Serialize(message, messageNamespace + messageName)
 }
-
-
-
-var serializers = {
-
-		 SubscribeToStream: function(payload) {
-				var name = 'SubscribeToStream'
-				return {
-					name: name
-			  , payload: {
-						event_stream_id: payload.stream
-					, resolve_link_tos: payload.resolveLinkTos
-					}
-				}
-			}
-		}

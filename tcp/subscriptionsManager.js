@@ -1,5 +1,4 @@
 var uuid = require('node-uuid')
-	, parser = require('./messageParser')
 	, subscriptionOperation = require('./subscriptionOperation')
 
 module.exports = SubscriptionsManager
@@ -22,22 +21,12 @@ SubscriptionsManager.prototype.getActiveSubscription = function(correlationId) {
 	return this._activeSubscriptions[correlationId]
 }
 
-SubscriptionsManager.prototype.scheduleSubscription = function(subscriptionItem, tcpConnection) {
+SubscriptionsManager.prototype.scheduleSubscription = function(subscriptionData, tcpConnection) {
 	var correlationId = uuid.v4()
-		, subscriptionName = subscriptionItem.name
-		, auth = null
+		, subscription = subscriptionOperation(correlationId, subscriptionData, tcpConnection)
 
-	this._activeSubscriptions[correlationId] = {
-		subscription: subscriptionOperation(correlationId, subscriptionItem.subscription, tcpConnection)
-	, item: subscriptionItem
-	}
+	this._activeSubscriptions[correlationId] = subscription
 
-	var payload = parser.serialize(subscriptionName, subscriptionItem.data)
-
-	tcpConnection.enqueueSend({
-		messageName: subscriptionName
-	, correlationId: correlationId
-	, payload: payload
-	, auth: auth
-	})
+	tcpConnection.enqueueSend(subscription.toTcpMessage())
 }
+

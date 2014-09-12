@@ -22,13 +22,17 @@ describe('subscribe_should', function() {
   it('be_able_to_subscribe_to_non_existing_stream_and_then_catch_new_event', function(done) {
     var stream = 'subscribe_should_be_able_to_subscribe_to_non_existing_stream_and_then_catch_created_event'
     	, subscription = connection.subscribeToStream(stream)
+ 	    , appendData = {
+					expectedVersion: client.expectedVersion.emptyStream
+				, events: createTestEvent()
+		    } 
 
     subscription.on('event', function(evt) {
     	true.should.be.true
     	done()
     })
 
-    connection.appendToStream(stream, client.expectedVersion.emptyStream, createTestEvent(), function(err) {
+    connection.appendToStream(stream, appendData, function(err) {
     	if(err) return done(err)
     })
   })
@@ -37,6 +41,10 @@ describe('subscribe_should', function() {
     var stream = 'subscribe_should_allow_multiple_subscriptions_to_same_stream'
     	, sub1 = connection.subscribeToStream(stream)
     	, sub2 = connection.subscribeToStream(stream)
+ 	    , appendData = {
+					expectedVersion: client.expectedVersion.emptyStream
+				, events: createTestEvent()
+		    } 
     	, evtSub1
     	, evtSub2
 
@@ -57,7 +65,7 @@ describe('subscribe_should', function() {
     	testForFinish()
     })
 
-    connection.appendToStream(stream, client.expectedVersion.emptyStream, createTestEvent(), function(err) {
+    connection.appendToStream(stream, appendData, function(err) {
     	if(err) return done(err)
     })
   })
