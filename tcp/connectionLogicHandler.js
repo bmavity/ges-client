@@ -66,8 +66,8 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartConnection: function(message, cb) {
 					cb(null)
 				}
-			, StartOperation: function(operation, cb) {
-					this._operations.scheduleOperation(operation, this._connection, cb)
+			, StartOperation: function(operation) {
+					this._operations.scheduleOperation(operation, this._connection)
 				}
 			, StartSubscription: function(subscriptionInfo) {
 					var subscriptionItem = {
@@ -120,12 +120,7 @@ function handlePackage(message) {
 
 	var operation = this._operations.getActiveOperation(correlationId)
 	if(operation) {
-		var handler = commandHandlers[messageName]
-		if(handler) {
-			handler(message.package, operation.cb)
-		} else {
-			operation.cb(new Error('Handler not availble for operation: ' + messageName + ' with id ' + correlationId))
-		}
+		operation.finish(message.package)
 		return
 	}
 
@@ -267,38 +262,7 @@ var uuid = require('node-uuid')
 				  		.map(parseEventStoreEvent)
 				cb(null, events)
 			}
-		, 'ReadStreamEventsForwardCompleted': function(message, cb) {
-				payload = parser.parse('ReadStreamEventsCompleted', message.payload)
 
-				/*
-					public readonly SliceReadStatus Status;
-				  public readonly string Stream;
-				  public readonly int FromEventNumber;
-				  public readonly ReadDirection ReadDirection;
-				  public readonly ResolvedEvent[] Events;
-				  public readonly int NextEventNumber;
-				  public readonly int LastEventNumber;
-				  public readonly bool IsEndOfStream;
-
-
-				  repeated ResolvedIndexedEvent events = 1;
-					required ReadStreamResult result = 2;
-					required int32 next_event_number = 3;
-					required int32 last_event_number = 4;
-					required bool is_end_of_stream = 5;
-					required int64 last_commit_position = 6;
-
-					optional string error = 7;
-				*/
-
-				cb(null, {
-					Status: payload.result
-				, Events: payload.events.map(fromEventStoreEvent)
-				, NextEventNumber: payload.next_event_number
-				, LastEventNumber: payload.last_event_number
-				, IsEndOfStream: payload.is_end_of_stream
-				})
-			}
     , 'SubscriptionConfirmation': function(message, subscription) {
 				payload = parser.parse('SubscriptionConfirmation', message.payload)
 				//console.log('SubscriptionConfirmation', correlationId, payload)
@@ -315,25 +279,6 @@ var uuid = require('node-uuid')
 				//console.log('SubscriptionDropped', correlationId, payload)
 				subscription.dropped()
 			}
-		, 'WriteEventsCompleted': function(message, cb) {
-				payload = parser.parse('WriteEventsCompleted', message.payload)
-
-				if(payload.result === 'WrongExpectedVersion') {
-					return cb(new Error(payload.message))
-				}
-
-				var hasCommitPosition = payload.commit_position || payload.commit_position === 0
-					, hasPreparePosition = payload.prepare_position || payload.prepare_position === 0
-
-				//console.log(payload)
-				cb(null, {
-					NextExpectedVersion: payload.last_event_number
-				, LogPosition: {
-						CommitPosition: hasCommitPosition ? payload.commit_position : -1
-					, PreparePosition: hasPreparePosition ? payload.prepare_position : -1
-					}
-				})
-			}
 		, 'BadRequest': function(correlationId, payload, cb) {
 				cb(new Error(payload.toString()))
 			}
@@ -343,43 +288,3 @@ var uuid = require('node-uuid')
 			}
 		}
 
-function fromEventStoreEvent(rawEvent) {
-	/*
-	required EventRecord event = 1;
-	optional EventRecord link = 2;
-	*/
-	return {
-		Event: toRecordedEvent(rawEvent.event)
-	, Link: rawEvent.link ? toRecordedEvent(rawEvent.link) : null
-	}
-}
-
-function toRecordedEvent(systemRecord) {
-	/*
-	required string event_stream_id = 1;
-	required int32 event_number = 2;
-	required bytes event_id = 3;
-	required string event_type = 4;
-	required int32 data_content_type = 5;
-	required int32 metadata_content_type = 6;
-	required bytes data = 7;
-	optional bytes metadata = 8;
-	optional int64 created = 9;
-	optional int64 created_epoch = 10;
-	*/
-	var recordedEvent = {}
-		, metadata = systemRecord.hasOwnProperty('metadata') || systemRecord.metadata !== null ? systemRecord.metadata : new Buffer(0)
-		, data = systemRecord.data === null ? new Buffer(0) : systemRecord.data
-	Object.defineProperties(recordedEvent, {
-		EventStreamId: { value: systemRecord.event_stream_id, enumerable: true }
-  , EventId: { value: uuid.unparse(systemRecord.event_id), enumerable: true }
-  , EventNumber: { value: systemRecord.event_number, enumerable: true }
-  , EventType: { value: systemRecord.event_type, enumerable: true }
-  , Data: { value: data, enumerable: true }
-  , Metadata: { value: metadata, enumerable: true }  
-  , IsJson: { value: systemRecord.data_content_type === 1, enumerable: true }
-  , Created: { value: systemRecord.created, enumerable: true }
-  , CreatedEpoch: { value: systemRecord.created_epoch, enumerable: true }
-	})
-	return recordedEvent
-}

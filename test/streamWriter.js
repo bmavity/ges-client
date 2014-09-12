@@ -23,7 +23,11 @@ StreamWriter.prototype.append = function(events, cb) {
 				return me._getAppendSingle(evt, i)
 			})
 		, tailWriter = function(events, version, twcb) {
-				me._store.appendToStream(me._stream, version, events, function(err, appendResult) {
+				var appendData = {
+							expectedVersion: version
+						, events: events
+						}
+				me._store.appendToStream(me._stream, appendData, function(err, appendResult) {
 					if(err) return twcb(err)
 					twcb(null, tailWriter)
 				})
@@ -40,8 +44,12 @@ StreamWriter.prototype._getAppendSingle = function(evt, i) {
 
 	return function(cb) {
 	  var expVer = me._version === any ? any : me._version + i
+	  	, appendData = {
+	  			expectedVersion: expVer
+	  		, events: evt
+		  	}
 
-	  me._store.appendToStream(me._stream, expVer, evt, function(err, appendResult) {
+	  me._store.appendToStream(me._stream, appendData, function(err, appendResult) {
 		  if(me._version !== any) {
 		  	appendResult.NextExpectedVersion.should.equal(expVer + 1)
 		  }

@@ -1,4 +1,5 @@
 var uuid = require('node-uuid')
+	, operations = require('./operations')
 	, parser = require('./messageParser')
 
 module.exports = OperationsManager
@@ -14,33 +15,18 @@ function OperationsManager() {
 }
 
 OperationsManager.prototype.enqueueOperation = function(operation, cb) {
-	this._waitingOperations.push({
-		operation: operation
-	, cb: cb
-	})
-	setImmediate(cb)
+	return this._waitingOperations.push(operation)
 }
 
 OperationsManager.prototype.getActiveOperation = function(correlationId) {
 	return this._activeOperations[correlationId]
 }
 
-OperationsManager.prototype.scheduleOperation = function(operation, tcpConnection, cb) {
+OperationsManager.prototype.scheduleOperation = function(operationData, tcpConnection) {
 	var correlationId = uuid.v4()
-		, operationName = operation.name
-		, auth = null
+		, operation = operations(operationData)
 
-	this._activeOperations[correlationId] = {
-		operation: operation
-	, cb: cb
-	}
+	this._activeOperations[correlationId] = operation
 
-	var payload = parser.serialize(operationName, operation.data)
-
-	tcpConnection.enqueueSend({
-		messageName: operationName
-	, correlationId: correlationId
-	, payload: payload
-	, auth: auth
-	})
+	tcpConnection.enqueueSend(operation.toTcpMessage(correlationId))
 }
