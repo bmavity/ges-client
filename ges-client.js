@@ -1,4 +1,5 @@
 var tcpConnect = require('./tcp/connection')
+	, eventData = require('./eventData')
 	, expectedVersion = {}
 	, streamPosition = {}
 
@@ -9,6 +10,7 @@ Object.defineProperties(module.exports, {
 	expectedVersion: { value: expectedVersion }
 , maxRecordCount: { value: 2147483647 }
 , streamPosition: { value: streamPosition }
+, createEventData: { value: eventData }
 })
 
 Object.defineProperties(streamPosition, {
