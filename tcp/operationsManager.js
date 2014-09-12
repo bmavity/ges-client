@@ -14,7 +14,7 @@ function OperationsManager() {
 	this._waitingOperations = []
 }
 
-OperationsManager.prototype.enqueueOperation = function(operation, cb) {
+OperationsManager.prototype.enqueueOperation = function(operation) {
 	return this._waitingOperations.push(operation)
 }
 
