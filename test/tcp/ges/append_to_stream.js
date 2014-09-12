@@ -22,8 +22,8 @@ describe('append to stream', function() {
   it('should_allow_appending_zero_events_to_stream_with_no_problems', function(done) {
     var stream1 = 'should_allow_appending_zero_events_to_stream_with_no_problems1'
     var stream2 = 'should_allow_appending_zero_events_to_stream_with_no_problems2'
-    	, noStream = client.expectedVersion.noStream
-    	, any = client.expectedVersion.any
+    	, noStream = { expectedVersion: client.expectedVersion.noStream }
+    	, any = { expectedVersion: client.expectedVersion.any }
 
     function readStream2() {
 	    connection.appendToStream(stream2, noStream, function(err, appendResult) {
@@ -71,7 +71,7 @@ describe('append to stream', function() {
 			    	appendResult.NextExpectedVersion.should.equal(-1)
 
 			    	connection.readStreamEventsForward(stream1, { start: 0, count: 2 }, function(err, readResult) {
-			    		if(err) return cb(err)
+			    		if(err) return done(err)
 
 			    		readResult.Events.length.should.equal(0)
 				    	readStream2()
@@ -84,8 +84,12 @@ describe('append to stream', function() {
 
   it('should_create_stream_with_no_stream_exp_ver_on_first_write_if_does_not_exist', function(done) {
     var stream = 'should_create_stream_with_no_stream_exp_ver_on_first_write_if_does_not_exist'
+    	, appendData = {
+		    	expectedVersion: client.expectedVersion.noStream
+	    	, events: createTestEvent()
+	    	}
 
-    connection.appendToStream(stream, client.expectedVersion.noStream, createTestEvent(), function(err, appendResult) {
+    connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	appendResult.NextExpectedVersion.should.equal(0)
@@ -101,8 +105,12 @@ describe('append to stream', function() {
 
   it('should_create_stream_with_any_exp_ver_on_first_write_if_does_not_exist', function(done) {
   	var stream = 'should_create_stream_with_any_exp_ver_on_first_write_if_does_not_exist'
+    	, appendData = {
+		    	expectedVersion: client.expectedVersion.any
+	    	, events: createTestEvent()
+	    	}
 
-    connection.appendToStream(stream, client.expectedVersion.any, createTestEvent(), function(err, appendResult) {
+    connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	appendResult.NextExpectedVersion.should.equal(0)
@@ -121,8 +129,12 @@ describe('append to stream', function() {
 
   it('should_return_log_position_when_writing', function(done) {
     var stream = 'should_return_log_position_when_writing'
+    	, appendData = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, events: createTestEvent()
+	    	}
 
-    connection.appendToStream(stream, client.expectedVersion.emptyStream, createTestEvent(), function(err, appendResult) {
+    connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	appendResult.LogPosition.PreparePosition.should.be.greaterThan(0)
@@ -140,11 +152,19 @@ describe('append to stream', function() {
 
   it('should_append_with_correct_exp_ver_to_existing_stream', function(done) {
     var stream = 'should_append_with_correct_exp_ver_to_existing_stream'
+    	, appendData1 = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, events: createTestEvent()
+	    	}
+    	, appendData2 = {
+		    	expectedVersion: 0
+	    	, events: createTestEvent()
+	    	}
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, createTestEvent(), function(err, appendResult) {
+    connection.appendToStream(stream, appendData1, function(err, appendResult) {
     	if(err) return done(err)
     	
-    	connection.appendToStream(stream, 0, createTestEvent(), function(err, nextAppendResult) {
+    	connection.appendToStream(stream, appendData2, function(err, nextAppendResult) {
     		(err ===  null).should.be.true
 
 	    	done()
@@ -154,11 +174,19 @@ describe('append to stream', function() {
 
   it('should_append_with_any_exp_ver_to_existing_stream', function(done) {
   	var stream = 'should_append_with_any_exp_ver_to_existing_stream'
+    	, appendData1 = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, events: createTestEvent()
+	    	}
+	    , appendData2 = {
+		    	expectedVersion: client.expectedVersion.any
+	    	, events: createTestEvent()
+		    }
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, createTestEvent(), function(err, appendResult) {
+    connection.appendToStream(stream, appendData1, function(err, appendResult) {
     	if(err) return done(err)
     	
-    	connection.appendToStream(stream, client.expectedVersion.any, createTestEvent(), function(err, nextAppendResult) {
+    	connection.appendToStream(stream, appendData2, function(err, nextAppendResult) {
     		(err ===  null).should.be.true
 
 	    	done()
@@ -168,8 +196,12 @@ describe('append to stream', function() {
   
   it('should_fail_appending_with_wrong_exp_ver_to_existing_stream', function(done) {
     var stream = 'should_fail_appending_with_wrong_exp_ver_to_existing_stream'
+    	, appendData = {
+		    	expectedVersion: 1
+	    	, events: createTestEvent()
+	    	}
 
-		connection.appendToStream(stream, 1, createTestEvent(), function(err, appendResult) {
+    connection.appendToStream(stream, appendData, function(err, appendResult) {
   		(err === null).should.not.be.true
     	done()
     })
@@ -180,8 +212,12 @@ describe('append to stream', function() {
     	, allEvents = range(0, 100).map(function(i) {
 	    		return createTestEvent(i.toString(), i.toString())
 	    	})
+    	, appendData = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, events: allEvents
+	    	}
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+    connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	appendResult.NextExpectedVersion.should.equal(99)

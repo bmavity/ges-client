@@ -81,8 +81,12 @@ describe('read event stream forward should', function() {
 	    , allEvents = range(0, 10).map(function(i) {
 	    		return createTestEvent(i.toString())
 	    	})
+	    , appendData = {
+					expectedVersion: client.expectedVersion.emptyStream
+				, events: allEvents
+		    }
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+		connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	connection.readStreamEventsForward(stream, { start: 11, count: 5 }, function(err, readResult) {
@@ -99,8 +103,12 @@ describe('read event stream forward should', function() {
 	    , allEvents = range(0, 10).map(function(i) {
 	    		return createTestEvent(i.toString())
 	    	})
+	    , appendData = {
+					expectedVersion: client.expectedVersion.emptyStream
+				, events: allEvents
+		    }
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+		connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	connection.readStreamEventsForward(stream, { start: 9, count: 5 }, function(err, readResult) {
@@ -117,8 +125,12 @@ describe('read event stream forward should', function() {
 	    , allEvents = range(0, 10).map(function(i) {
 	    		return createTestEvent(i.toString())
 	    	})
+	    , appendData = {
+					expectedVersion: client.expectedVersion.emptyStream
+				, events: allEvents
+		    }
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+		connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
     	
     	connection.readStreamEventsForward(stream, { start: client.streamPosition.start, count: client.maxRecordCount }, function(err, readResult) {
@@ -175,8 +187,12 @@ describe('read event stream forward should', function() {
 	    , allEvents = range(0, 10).map(function(i) {
 	    		return createTestEvent(i.toString())
 	    	})
+	    , appendData = {
+					expectedVersion: client.expectedVersion.emptyStream
+				, events: allEvents
+		    }
 
-		connection.appendToStream(stream, client.expectedVersion.emptyStream, allEvents, function(err, appendResult) {
+		connection.appendToStream(stream, appendData, function(err, appendResult) {
     	if(err) return done(err)
 
     	var opts = { start: 5, count: 2 }

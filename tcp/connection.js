@@ -53,41 +53,41 @@ function EsTcpConnection(endPoint) {
 }
 util.inherits(EsTcpConnection, EventEmitter)
 
-EsTcpConnection.prototype.appendToStream = function(stream, expectedVersion, events, cb) {
-	if(!cb && typeof events === 'function') {
-		cb = events
-		events = []
-	}
-	if(!Array.isArray(events)) {
-		events = [ events ]
-	}
-
-	this.enqueueOperation('WriteEvents', {
-		stream: stream
-	, expectedVersion: expectedVersion
-	, events: events
-	, requireMaster: false//!!options.requireMaster
-	}, cb)
-}
-
-EsTcpConnection.prototype.close = function(cb) {
-	this._handler.enqueueMessage('CloseConnection', {
-		reason: 'Connection close requested by client.'
-	, exception: null
-	}, cb)
-}
-
-EsTcpConnection.prototype.connect = function() {
-	this._handler.enqueueMessage('StartConnection', {
-		endPoint: this._endPoint
+EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
+	this.enqueueOperation({
+		name: 'AppendToStream'
+	, stream: stream
+	, auth: appendData.auth
+	, data: appendData
+	, cb: cb
 	})
 }
 
-EsTcpConnection.prototype.enqueueOperation = function(operationName, operationData, cb) {
-	this._handler.enqueueMessage('StartOperation', {
-		name: operationName
+EsTcpConnection.prototype.close = function(cb) {
+	this._handler.enqueueMessage({
+		name: 'CloseConnection'
+	, data: {
+			reason: 'Connection close requested by client.'
+		, exception: null
+		}
+	, cb: cb
+	})
+}
+
+EsTcpConnection.prototype.connect = function() {
+	this._handler.enqueueMessage({
+		name: 'StartConnection'
+	, data: {
+			endPoint: this._endPoint
+		}
+	})
+}
+
+EsTcpConnection.prototype.enqueueOperation = function(operationData) {
+	this._handler.enqueueMessage({
+		name: 'StartOperation'
 	, data: operationData
-	}, cb)
+	})
 }
 
 EsTcpConnection.prototype.isInState = function(stateName) {
@@ -115,21 +115,32 @@ EsTcpConnection.prototype.readAllEventsForward = function(cb) {
 	})
 }
 
-EsTcpConnection.prototype.readStreamEventsForward = function(stream, options, cb) {
-	if(options.start < 0) {
+EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, cb) {
+	if(readData.start < 0) {
 		setImmediate(function() {
 			cb(new Error('Argument: start must be non-negative.'))
 		})
 		return
 	}
-	if(options.count <= 0) {
+	if(readData.count <= 0) {
 		setImmediate(function() {
 			cb(new Error('Argument: count must be positive.'))
 		})
 		return
 	}
 
-	this.enqueueOperation('ReadStreamEventsForward', {
+	this.enqueueOperation({
+		name: 'ReadStreamEventsForward'
+	, stream: stream
+	, auth: readData.auth
+	, data: readData
+	, cb: cb
+	})
+}
+
+/*
+EsTcpConnection.prototype.setStreamMetadata = function(stream, expectedMetastreamVersion, metadata, cb) {
+	this.enqueueOperation('AppendToStream', {
 		stream: stream
 	, start: options.start
 	, count: options.count
@@ -137,18 +148,21 @@ EsTcpConnection.prototype.readStreamEventsForward = function(stream, options, cb
 	, requireMaster: !!options.requireMaster
 	}, cb)
 }
+*/
 
-EsTcpConnection.prototype.subscribeToStream = function(stream, resolveLinkTos) {
+EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
 	var subscription = createSubscription()
 
-	this._handler.enqueueMessage('StartSubscription', {
-	  subscription: subscription
-	, operation: {
+	this._handler.enqueueMessage({
+		name: 'StartSubscription'
+	, data: {
 			name: 'SubscribeToStream'
-		, data: {
-				stream: stream
-			, resolveLinkTos: !!resolveLinkTos
-			}
+		, stream: stream
+		, auth: subscriptionData.auth
+		, data: subscriptionData
+		, subscription: subscription
 		}
 	})
 

@@ -223,11 +223,19 @@ describe('appending_to_implicitly_created_stream', function() {
 	    , allEvents = range(0, 2).map(function(i) {
 	    		return createTestEvent(uuid.v4())
 	    	})
+	    , appendData1 = {
+	    		expectedVersion: client.expectedVersion.noStream
+	    	, events: allEvents
+		    }
+ 	    , appendData2 = {
+	    		expectedVersion: client.expectedVersion.any
+	    	, events: allEvents[0]
+		    } 
 
-	  connection.appendToStream(stream, client.expectedVersion.noStream, allEvents, function(err, appendResult) {
+	  connection.appendToStream(stream, appendData1, function(err, appendResult) {
   		if(err) return done(err)
 
-		  connection.appendToStream(stream, client.expectedVersion.noStream, allEvents[0], function(err, appendResult) {
+		  connection.appendToStream(stream, appendData2, function(err, appendResult) {
 	  		if(err) return done(err)
 
 	  		eventStreamCounter(connection, stream, function(err, count) {
@@ -244,11 +252,19 @@ describe('appending_to_implicitly_created_stream', function() {
 	    , allEvents = range(0, 2).map(function(i) {
 	    		return createTestEvent(uuid.v4())
 	    	})
+	    , appendData1 = {
+	    		expectedVersion: client.expectedVersion.noStream
+	    	, events: allEvents
+		    }
+ 	    , appendData2 = {
+	    		expectedVersion: client.expectedVersion.any
+	    	, events: allEvents[0]
+		    } 
 
-	  connection.appendToStream(stream, client.expectedVersion.noStream, allEvents, function(err, appendResult) {
+	  connection.appendToStream(stream, appendData1, function(err, appendResult) {
   		if(err) return done(err)
 
-		  connection.appendToStream(stream, client.expectedVersion.any, allEvents[0], function(err, appendResult) {
+		  connection.appendToStream(stream, appendData2, function(err, appendResult) {
 	  		if(err) return done(err)
 
 	  		eventStreamCounter(connection, stream, function(err, count) {
@@ -265,11 +281,19 @@ describe('appending_to_implicitly_created_stream', function() {
     	    , allEvents = range(0, 2).map(function(i) {
 	    		return createTestEvent(uuid.v4())
 	    	})
+	    , appendData1 = {
+	    		expectedVersion: client.expectedVersion.noStream
+	    	, events: allEvents
+		    }
+ 	    , appendData2 = {
+	    		expectedVersion: 0
+	    	, events: allEvents[1]
+		    } 
 
-	  connection.appendToStream(stream, client.expectedVersion.noStream, allEvents, function(err, appendResult) {
+	  connection.appendToStream(stream, appendData1, function(err, appendResult) {
   		if(err) return done(err)
 
-		  connection.appendToStream(stream, 0, allEvents[1], function(err, appendResult) {
+		  connection.appendToStream(stream, appendData2, function(err, appendResult) {
 	  		if(err) return done(err)
 
 	  		eventStreamCounter(connection, stream, function(err, count) {
@@ -286,11 +310,19 @@ describe('appending_to_implicitly_created_stream', function() {
 	    , allEvents = range(0, 2).map(function(i) {
 	    		return createTestEvent(uuid.v4())
 	    	})
+	    , appendData1 = {
+	    		expectedVersion: client.expectedVersion.noStream
+	    	, events: allEvents
+		    }
+ 	    , appendData2 = {
+	    		expectedVersion: client.expectedVersion.any
+	    	, events: allEvents[1]
+		    } 
 
-	  connection.appendToStream(stream, client.expectedVersion.noStream, allEvents, function(err, appendResult) {
+	  connection.appendToStream(stream, appendData1, function(err, appendResult) {
   		if(err) return done(err)
 
-		  connection.appendToStream(stream, client.expectedVersion.any, allEvents[1], function(err, appendResult) {
+		  connection.appendToStream(stream, appendData2, function(err, appendResult) {
 	  		if(err) return done(err)
 
 	  		eventStreamCounter(connection, stream, function(err, count) {
@@ -307,11 +339,18 @@ describe('appending_to_implicitly_created_stream', function() {
 	    , allEvents = range(0, 2).map(function(i) {
 	    		return createTestEvent(uuid.v4())
 	    	})
+	    , appendData1 = {
+	    		expectedVersion: client.expectedVersion.noStream
+	    	, events: allEvents
+		    }
 
-	  connection.appendToStream(stream, client.expectedVersion.noStream, allEvents, function(err, appendResult) {
+	  connection.appendToStream(stream, appendData1, function(err, appendResult) {
   		if(err) return done(err)
-			var additionalEvents = allEvents.concat([ createTestEvent(uuid.v4()) ])
-		  connection.appendToStream(stream, client.expectedVersion.noStream, additionalEvents, function(err, appendResult) {
+			var appendData2 = {
+						expectedVersion: client.expectedVersion.noStream
+					, events: allEvents.concat([ createTestEvent(uuid.v4()) ])
+					}
+		  connection.appendToStream(stream, appendData2, function(err, appendResult) {
 	  		err.message.should.equal('Wrong expected version.')
 	  		done()
 		  })
