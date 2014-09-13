@@ -62,27 +62,84 @@ describe('read_all_events_backward_should', function() {
 		})
 	})
 
-  it('return_partial_slice_if_not_enough_events', function(done) {
+  it('return_events_in_reversed_order_compared_to_written', function(done) {
 		var readData = {
 					position: client.position.end
-				, maxCount: 30
+				, maxCount: 20
 				}
 		connection.readAllEventsBackward(readData, function(err, result) {
 			if(err) return done(err)
 
-			var nonSystemEvents = result.Events.filter(function(evt) {
-						return evt.Event.EventStreamId.indexOf('$') !== 0
-					})
-
-			nonSystemEvents.length.should.be.lessThan(30)
+			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
+			
+			// This fails due to system events appearing inside all stream.
+			// How does this pass in C# land?
 			nonSystemEvents.should.matchEvents(reversedEvents)
 			done()
 		})
 	})
 
-  it('return_events_in_reversed_order_compared_to_written')
-  it('be_able_to_read_all_one_by_one_until_end_of_stream')
-  it('be_able_to_read_events_slice_at_time')
+  it('be_able_to_read_all_one_by_one_until_end_of_stream', function(done) {
+  	var nonSystemEvents = []
+  		, currentPosition = client.position.end
+
+  	function readNextEvent() {
+			var readData = {
+						position: currentPosition
+					, maxCount: 1
+					}
+			connection.readAllEventsBackward(readData, function(err, result) {
+				if(err) return done(err)
+
+				if(result.IsEndOfStream) {
+					compareEvents()
+				} else {
+					if(isNotFromSystemStream(result.Events[0])) {
+						nonSystemEvents.push(result.Events[0])
+					}
+					currentPosition = result.NextPosition
+					readNextEvent()
+				}
+			})
+  	}
+
+  	function compareEvents() {
+			nonSystemEvents.should.matchEvents(reversedEvents)
+			done()
+  	}
+
+  	readNextEvent()
+	})
+
+  it('be_able_to_read_events_slice_at_time', function(done) {
+  	var nonSystemEvents = []
+  		, currentPosition = client.position.end
+
+  	function readNextEvent() {
+			var readData = {
+						position: currentPosition
+					, maxCount: 5
+					}
+			connection.readAllEventsBackward(readData, function(err, result) {
+				if(err) return done(err)
+
+				if(result.IsEndOfStream) {
+					compareEvents()
+				} else {
+					nonSystemEvents = nonSystemEvents.concat(result.Events.filter(isNotFromSystemStream))
+					currentPosition = result.NextPosition
+					readNextEvent()
+				}
+			})
+  	}
+
+  	function compareEvents() {
+			nonSystemEvents.should.matchEvents(reversedEvents)
+			done()
+  	}
+
+  	readNextEvent()
+	})
 
   after(function(done) {
   	connection.close(function() {
@@ -94,3 +151,8 @@ describe('read_all_events_backward_should', function() {
   	})
   })
 })
+
+function isNotFromSystemStream(evt) {
+	return !client.systemStreams.isSystemStream(evt.Event.EventStreamId)
+}
+

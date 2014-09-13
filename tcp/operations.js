@@ -88,21 +88,13 @@ var operations = {
 	  	}
 		, responseType: 'ReadAllEventsCompleted'
 		, toResponseObject: function(payload) {
-/*
-	required int64 commit_position = 1;
-	required int64 prepare_position = 2;
-	repeated ResolvedEvent events = 3;
-	required int64 next_commit_position = 4;
-	required int64 next_prepare_position = 5;
-
-	optional ReadAllResult result = 6 [default = Success];
-	optional string error = 7;
-*/
 				var events = payload.events || []
 				return {
 					Status: payload.result
 				, Events: events.map(toResolvedEvent)
 				, IsEndOfStream: events.length === 0
+				, OriginalPosition: position(payload.commit_position, payload.prepare_position)
+				, NextPosition: position(payload.next_commit_position, payload.next_prepare_position)
 				}
 			}
 		}
