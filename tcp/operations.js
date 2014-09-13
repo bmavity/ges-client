@@ -68,6 +68,49 @@ var operations = {
 			}
 		}
 	}
+, ReadAllEventsBackward: function(operationData) {
+		return {
+			cb: operationData.cb
+		, requestType: 'ReadAllEventsBackward'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+/*
+	required int64 commit_position = 1;
+	required int64 prepare_position = 2;
+	required int32 max_count = 3;
+	required bool resolve_link_tos = 4;
+	required bool require_master = 5;
+	*/
+				return messageParser.serialize('ReadAllEvents', {
+					commit_position: payload.position.commitPosition
+				, prepare_position: payload.position.preparePosition
+				, max_count: payload.maxCount
+				, resolve_link_tos: !!payload.resolveLinkTos
+				, require_master: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'ReadAllEventsCompleted'
+		, toResponseObject: function(payload) {
+/*
+	required int64 commit_position = 1;
+	required int64 prepare_position = 2;
+	repeated ResolvedEvent events = 3;
+	required int64 next_commit_position = 4;
+	required int64 next_prepare_position = 5;
+
+	optional ReadAllResult result = 6 [default = Success];
+	optional string error = 7;
+*/
+				var events = payload.events || []
+				return {
+					Status: payload.result
+				, Events: events.map(fromEventStoreEvent)
+				, IsEndOfStream: events.length === 0
+				}
+			}
+		}
+	}
 , ReadEvent: function(operationData) {
 		return {
 			cb: operationData.cb

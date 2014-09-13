@@ -2,6 +2,10 @@ var client = require('../')
 	, uuid = require('node-uuid')
 
 module.exports = function createTestEvent(eventId, data, metadata) {
+	if(Array.isArray(eventId)) return eventId.map(function(i) {
+		return createTestEvent(i.toString())
+	})
+		
 	if(eventId && !isUuid(eventId)) {
 		metadata = data
 		data = eventId

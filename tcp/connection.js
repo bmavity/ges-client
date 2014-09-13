@@ -100,6 +100,15 @@ EsTcpConnection.prototype.isInState = function(stateName) {
 	return this._handler.isInState(stateName)
 }
 
+EsTcpConnection.prototype.readAllEventsBackward = function(readData, cb) {
+	this.enqueueOperation({
+		name: 'ReadAllEventsBackward'
+	, auth: readData.auth
+	, data: readData
+	, cb: cb
+	})
+}
+
 EsTcpConnection.prototype.readAllEventsForward = function(cb) {
 	var uuid = require('node-uuid')
   var correlationId = uuid.v4()
