@@ -11,6 +11,8 @@ require('../../shouldExtensions')
 describe('read_all_events_backward_should', function() {
 	var es
 		, connection
+		, testEvents = createTestEvent(range(0, 20))
+		, reversedEvents = testEvents.reduce(function(rev, evt) { rev.unshift(evt); return rev; }, [])
 
 	before(function(done) {
 		ges({ tcpPort: 2345 }, function(err, memory) {
@@ -20,11 +22,28 @@ describe('read_all_events_backward_should', function() {
 			connection = client({ port: 2345 }, function(err) {
 				if(err) return done(err)
 
-				var appendData = {
-							expectedVersion: client.expectedVersion.emptyStream
-						, events: createTestEvent(range(0, 20))
+				var setData = {
+							expectedMetastreamVersion: -1
+						, metadata: client.createStreamMetadata({
+							  acl: {
+									readRoles: client.systemRoles.all
+								}
+							})
+						, auth: {
+								username: client.systemUsers.admin
+							, password: client.systemUsers.defaultAdminPassword
+							}
 						}
-				connection.appendToStream('stream', appendData, done)
+
+				connection.setStreamMetadata('$all', setData, function(err) {
+					if(err) return done(err)
+						
+					var appendData = {
+								expectedVersion: client.expectedVersion.emptyStream
+							, events: testEvents
+							}
+					connection.appendToStream('stream', appendData, done)
+				})
 			})
 		})
 	})
@@ -43,7 +62,24 @@ describe('read_all_events_backward_should', function() {
 		})
 	})
 
-  it('return_partial_slice_if_not_enough_events')
+  it('return_partial_slice_if_not_enough_events', function(done) {
+		var readData = {
+					position: client.position.end
+				, maxCount: 30
+				}
+		connection.readAllEventsBackward(readData, function(err, result) {
+			if(err) return done(err)
+
+			var nonSystemEvents = result.Events.filter(function(evt) {
+						return evt.Event.EventStreamId.indexOf('$') !== 0
+					})
+
+			nonSystemEvents.length.should.be.lessThan(30)
+			nonSystemEvents.should.matchEvents(reversedEvents)
+			done()
+		})
+	})
+
   it('return_events_in_reversed_order_compared_to_written')
   it('be_able_to_read_all_one_by_one_until_end_of_stream')
   it('be_able_to_read_events_slice_at_time')

@@ -1,9 +1,4 @@
 var tcpConnect = require('./tcp/connection')
-	, streamMetadata = require('./tcp/streamMetadata')
-	, eventData = require('./eventData')
-	, position = require('./tcp/position')
-	, systemEventTypes = require('./tcp/systemEventTypes')
-	, systemStreams = require('./tcp/systemStreams')
 	, expectedVersion = {}
 	, streamPosition = {}
 
@@ -14,12 +9,14 @@ module.exports = createConnection
 Object.defineProperties(module.exports, {
 	expectedVersion: { value: expectedVersion }
 , maxRecordCount: { value: 2147483647 }
-, createEventData: { value: eventData }
-, createStreamMetadata: { value: streamMetadata }
-, position: { value: position }
+, createEventData: { value: require('./eventData') }
+, createStreamMetadata: { value: require('./tcp/streamMetadata') }
+, position: { value: require('./tcp/position') }
 , streamPosition: { value: streamPosition }
-, systemEventTypes: { value: systemEventTypes }
-, systemStreams: { value: systemStreams }
+, systemEventTypes: { value: require('./tcp/systemEventTypes') }
+, systemRoles: { value: require('./tcp/systemRoles') }
+, systemStreams: { value: require('./tcp/systemStreams') }
+, systemUsers: { value: require('./tcp/systemUsers') }
 })
 
 Object.defineProperties(expectedVersion, {

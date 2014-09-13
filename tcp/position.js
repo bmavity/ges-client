@@ -11,7 +11,7 @@ function Position(commitPosition, preparePosition) {
 	}
 
 	Object.defineProperties(this, {
-		commitPosition: { value: commitPosition }
-	, preparePosition: { value: preparePosition }
+		commitPosition: { value: commitPosition, enumerable: true }
+	, preparePosition: { value: preparePosition, enumerable: true }
 	})
 }
