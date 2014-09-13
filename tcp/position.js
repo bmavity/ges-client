@@ -10,8 +10,15 @@ function Position(commitPosition, preparePosition) {
 		return new Position(commitPosition, preparePosition)
 	}
 
+	if(!preparePosition) {
+		preparePosition = commitPosition.prepare_position
+		commitPosition = commitPosition.commit_position
+	}
+
 	Object.defineProperties(this, {
 		commitPosition: { value: commitPosition, enumerable: true }
+	, CommitPosition: { value: commitPosition, enumerable: true }
 	, preparePosition: { value: preparePosition, enumerable: true }
+	, PreparePosition: { value: preparePosition, enumerable: true }
 	})
 }
