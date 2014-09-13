@@ -1,5 +1,6 @@
 var uuid = require('node-uuid')
 	, messageParser = require('./messageParser')
+	, position = require('./position')
 
 module.exports = function(operationData) {
 	var operation = operations[operationData.name]
@@ -13,7 +14,7 @@ function OperationItem(operation) {
 			messageName: operation.requestType
 		, correlationId: correlationId
 		, payload: operation.toRequestPayload()
-		, auth: null
+		, auth: operation.auth
 		}
 	}
 
@@ -41,7 +42,8 @@ function OperationItem(operation) {
 var operations = {
 	AppendToStream: function(operationData) {
 		return {
-		  cb: operationData.cb
+		  auth: operationData.auth
+		, cb: operationData.cb
 		, requestType: 'WriteEvents'
 		, toRequestPayload: function() {
 				var payload = operationData.data
@@ -68,9 +70,68 @@ var operations = {
 			}
 		}
 	}
+, ReadAllEventsBackward: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'ReadAllEventsBackward'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('ReadAllEvents', {
+					commit_position: payload.position.commitPosition
+				, prepare_position: payload.position.preparePosition
+				, max_count: payload.maxCount
+				, resolve_link_tos: !!payload.resolveLinkTos
+				, require_master: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'ReadAllEventsCompleted'
+		, toResponseObject: function(payload) {
+				var events = payload.events || []
+				return {
+					Status: payload.result
+				, Events: events.map(toResolvedEvent)
+				, IsEndOfStream: events.length === 0
+				, OriginalPosition: position(payload.commit_position, payload.prepare_position)
+				, NextPosition: position(payload.next_commit_position, payload.next_prepare_position)
+				}
+			}
+		}
+	}
+, ReadAllEventsForward: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'ReadAllEventsForward'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('ReadAllEvents', {
+					commit_position: payload.position.commitPosition
+				, prepare_position: payload.position.preparePosition
+				, max_count: payload.maxCount
+				, resolve_link_tos: !!payload.resolveLinkTos
+				, require_master: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'ReadAllEventsCompleted'
+		, toResponseObject: function(payload) {
+				var events = payload.events || []
+				return {
+					Status: payload.result
+				, Events: events.map(toResolvedEvent)
+				, IsEndOfStream: events.length === 0
+				, OriginalPosition: position(payload.commit_position, payload.prepare_position)
+				, NextPosition: position(payload.next_commit_position, payload.next_prepare_position)
+				}
+			}
+		}
+	}
 , ReadEvent: function(operationData) {
 		return {
-			cb: operationData.cb
+			auth: operationData.auth
+		, cb: operationData.cb
 		, requestType: 'ReadEvent'
 		, toRequestPayload: function(payload) {
 				var payload = operationData.data
@@ -95,7 +156,8 @@ var operations = {
 	}
 , ReadStreamEventsForward: function(operationData) {
 		return {
-			cb: operationData.cb
+			auth: operationData.auth
+		, cb: operationData.cb
 		, requestType: 'ReadStreamEventsForward'
 		, toRequestPayload: function(payload) {
 				var payload = operationData.data
@@ -161,4 +223,14 @@ function toRecordedEvent(systemRecord) {
   , CreatedEpoch: { value: systemRecord.created_epoch, enumerable: true }
 	})
 	return recordedEvent
+}
+
+function toResolvedEvent(payload) {
+	var resolvedEvent = {}
+	Object.defineProperties(resolvedEvent, {
+		Event: { value: toRecordedEvent(payload.event), enumerable: true }
+	, Link: { value: !payload.link ? null : toRecordedEvent(payload.link), enumerable: true }
+	, OriginalPosition: { value: position(payload.commit_position, payload.prepare_position), enumerable: true }
+	})
+	return resolvedEvent
 }
