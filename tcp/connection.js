@@ -168,7 +168,8 @@ EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, c
 }
 
 EsTcpConnection.prototype.setStreamMetadata = function(stream, setData, cb) {
-	var metadata = new Buffer(setData.metadata ? JSON.stringify(setData.metadata) : 0)
+	var rawMetadata = !!setData.metadata ? setData.metadata : new Buffer(0)
+		, metadata = Buffer.isBuffer(rawMetadata) ? rawMetadata : new Buffer(rawMetadata.toJSON())
 		, metaevent = eventData(uuid.v4(), systemEventTypes.streamMetadata, true, metadata)
 		, appendData = {
 				expectedVersion: setData.expectedMetastreamVersion
