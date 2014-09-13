@@ -1,7 +1,13 @@
 var util = require('util')
+	, uuid = require('node-uuid')
 	, EventEmitter = require('events').EventEmitter
 	, connectionLogicHandler = require('./connectionLogicHandler')
 	, createSubscription = require('./subscription')
+	, systemStreams = require('./systemStreams')
+	, eventData = require('../eventData')
+	, systemEventTypes = require('./systemEventTypes')
+	, streamMetadata = require('./streamMetadata')
+	, streamMetadataResult = require('./streamMetadataResult')
 
 module.exports = createConnection
 
@@ -161,17 +167,45 @@ EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, c
 	})
 }
 
-/*
-EsTcpConnection.prototype.setStreamMetadata = function(stream, expectedMetastreamVersion, metadata, cb) {
-	this.enqueueOperation('AppendToStream', {
-		stream: stream
-	, start: options.start
-	, count: options.count
-	, resolveLinkTos: !!options.resolveLinkTos
-	, requireMaster: !!options.requireMaster
-	}, cb)
+EsTcpConnection.prototype.setStreamMetadata = function(stream, setData, cb) {
+	var rawMetadata = !!setData.metadata ? setData.metadata : new Buffer(0)
+		, metadata = Buffer.isBuffer(rawMetadata) ? rawMetadata : new Buffer(rawMetadata.toJSON())
+		, metaevent = eventData(uuid.v4(), systemEventTypes.streamMetadata, true, metadata)
+		, appendData = {
+				expectedVersion: setData.expectedMetastreamVersion
+			, events: [ metaevent ]
+			}
+	this.enqueueOperation({
+		name: 'AppendToStream'
+	, stream: systemStreams.metastreamOf(stream)
+	, auth: setData.auth
+	, data: appendData
+	, cb: cb
+	})
 }
-*/
+
+EsTcpConnection.prototype.getStreamMetadata = function(stream, getData, cb) {
+	this.getStreamMetadataAsRawBytes(stream, getData, function(err, result) {
+		if(err) return cb(err)
+		var metadata = streamMetadata(result.StreamMetadata)
+		cb(null, streamMetadataResult(result.Stream, result.IsStreamDeleted, result.MetastreamVersion, metadata))
+	})
+}
+
+EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData, cb) {
+	var readData = {
+				eventNumber: -1
+			, auth: getData.auth
+			}
+	this.readEvent(systemStreams.metastreamOf(stream), readData, function(err, result) {
+		if(err) return cb(err)
+
+		var evt = result.Event.OriginalEvent
+		if(result.Status === 'Success') {
+			cb(null, streamMetadataResult(stream, false, evt.EventNumber, evt.Data))
+		}
+	})
+}
 
 EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
 	subscriptionData = subscriptionData || {}

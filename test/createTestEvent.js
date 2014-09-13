@@ -1,5 +1,5 @@
-var uuid = require('node-uuid')
-	, eventData = require('../eventData')
+var client = require('../')
+	, uuid = require('node-uuid')
 
 module.exports = function createTestEvent(eventId, data, metadata) {
 	if(eventId && !isUuid(eventId)) {
@@ -14,7 +14,7 @@ module.exports = function createTestEvent(eventId, data, metadata) {
 	var encodedData = new Buffer(data)
   var encodedMetadata = new Buffer(metadata)
 
-  return eventData(eventId, 'TestEvent', false, encodedData, encodedMetadata)
+  return client.createEventData(eventId, 'TestEvent', false, encodedData, encodedMetadata)
 }
 
 
