@@ -8,18 +8,17 @@ var client = require('../../../')
 
 require('../../shouldExtensions')
 
-describe('read_all_events_backward_should', function() {
+describe('read_all_events_forward_should', function() {
 	var es
 		, connection
 		, testEvents = createTestEvent(range(0, 20))
-		, reversedEvents = testEvents.reduce(function(rev, evt) { rev.unshift(evt); return rev; }, [])
 
 	before(function(done) {
-		ges({ tcpPort: 5006 }, function(err, memory) {
+		ges({ tcpPort: 5007 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 5006 }, function(err) {
+			connection = client({ port: 5007 }, function(err) {
 				if(err) return done(err)
 
 				var setData = {
@@ -48,12 +47,12 @@ describe('read_all_events_backward_should', function() {
 		})
 	})
 
-	it('return_empty_slice_if_asked_to_read_from_start', function(done) {
+  it('return_empty_slice_if_asked_to_read_from_end', function(done) {
 		var readData = {
-					position: client.position.start
+					position: client.position.end
 				, maxCount: 1
 				}
-		connection.readAllEventsBackward(readData, function(err, result) {
+		connection.readAllEventsForward(readData, function(err, result) {
 			if(err) return done(err)
 
 			result.IsEndOfStream.should.be.true
@@ -62,49 +61,31 @@ describe('read_all_events_backward_should', function() {
 		})
 	})
 
-	it('return_partial_slice_if_not_enough_events', function(done) {
+  it('return_events_in_same_order_as_written', function(done) {
 		var readData = {
-					position: client.position.end
-				, maxCount: 30
-				}
-		connection.readAllEventsBackward(readData, function(err, result) {
-			if(err) return done(err)
-
-			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
-			
-			nonSystemEvents.length.should.be.lessThan(30)
-			nonSystemEvents.should.matchEvents(reversedEvents)
-			done()
-		})
-	})
-
-  it('return_events_in_reversed_order_compared_to_written', function(done) {
-		var readData = {
-					position: client.position.end
+					position: client.position.start
 				, maxCount: 20
 				}
-		connection.readAllEventsBackward(readData, function(err, result) {
+		connection.readAllEventsForward(readData, function(err, result) {
 			if(err) return done(err)
 
 			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
 			
-			// This fails due to system events appearing inside all stream.
-			// How does this pass in C# land?
-			nonSystemEvents.should.matchEvents(reversedEvents)
+			nonSystemEvents.should.matchEvents(testEvents)
 			done()
 		})
 	})
 
   it('be_able_to_read_all_one_by_one_until_end_of_stream', function(done) {
   	var nonSystemEvents = []
-  		, currentPosition = client.position.end
+  		, currentPosition = client.position.start
 
   	function readNextEvent() {
 			var readData = {
 						position: currentPosition
 					, maxCount: 1
 					}
-			connection.readAllEventsBackward(readData, function(err, result) {
+			connection.readAllEventsForward(readData, function(err, result) {
 				if(err) return done(err)
 
 				if(result.IsEndOfStream) {
@@ -120,7 +101,7 @@ describe('read_all_events_backward_should', function() {
   	}
 
   	function compareEvents() {
-			nonSystemEvents.should.matchEvents(reversedEvents)
+			nonSystemEvents.should.matchEvents(testEvents)
 			done()
   	}
 
@@ -129,14 +110,14 @@ describe('read_all_events_backward_should', function() {
 
   it('be_able_to_read_events_slice_at_time', function(done) {
   	var nonSystemEvents = []
-  		, currentPosition = client.position.end
+  		, currentPosition = client.position.start
 
   	function readNextEvent() {
 			var readData = {
 						position: currentPosition
 					, maxCount: 5
 					}
-			connection.readAllEventsBackward(readData, function(err, result) {
+			connection.readAllEventsForward(readData, function(err, result) {
 				if(err) return done(err)
 
 				if(result.IsEndOfStream) {
@@ -150,11 +131,27 @@ describe('read_all_events_backward_should', function() {
   	}
 
   	function compareEvents() {
-			nonSystemEvents.should.matchEvents(reversedEvents)
+			nonSystemEvents.should.matchEvents(testEvents)
 			done()
   	}
 
   	readNextEvent()
+	})
+
+  it('return_partial_slice_if_not_enough_events', function(done) {
+		var readData = {
+					position: client.position.start
+				, maxCount: 30
+				}
+		connection.readAllEventsForward(readData, function(err, result) {
+			if(err) return done(err)
+
+			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
+			
+			nonSystemEvents.length.should.be.lessThan(30)
+			nonSystemEvents.should.matchEvents(testEvents)
+			done()
+		})
 	})
 
   after(function(done) {
@@ -171,4 +168,3 @@ describe('read_all_events_backward_should', function() {
 function isNotFromSystemStream(evt) {
 	return !client.systemStreams.isSystemStream(evt.Event.EventStreamId)
 }
-

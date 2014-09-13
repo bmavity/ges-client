@@ -99,6 +99,35 @@ var operations = {
 			}
 		}
 	}
+, ReadAllEventsForward: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'ReadAllEventsForward'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('ReadAllEvents', {
+					commit_position: payload.position.commitPosition
+				, prepare_position: payload.position.preparePosition
+				, max_count: payload.maxCount
+				, resolve_link_tos: !!payload.resolveLinkTos
+				, require_master: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'ReadAllEventsCompleted'
+		, toResponseObject: function(payload) {
+				var events = payload.events || []
+				return {
+					Status: payload.result
+				, Events: events.map(toResolvedEvent)
+				, IsEndOfStream: events.length === 0
+				, OriginalPosition: position(payload.commit_position, payload.prepare_position)
+				, NextPosition: position(payload.next_commit_position, payload.next_prepare_position)
+				}
+			}
+		}
+	}
 , ReadEvent: function(operationData) {
 		return {
 			auth: operationData.auth

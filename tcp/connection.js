@@ -109,24 +109,12 @@ EsTcpConnection.prototype.readAllEventsBackward = function(readData, cb) {
 	})
 }
 
-EsTcpConnection.prototype.readAllEventsForward = function(cb) {
-	var uuid = require('node-uuid')
-  var correlationId = uuid.v4()
-	this._storeCallback(correlationId, cb)
-
-  this._sender.send({
-  	messageName: 'ReadAllEventsForward'
-  , correlationId: correlationId
-  , payload: {
-  		name: 'ReadAllEvents'
-  	, data: {
-				commit_position: 0
-			, prepare_position: 0
-			, max_count: 1000
-			, resolve_link_tos: false
-			, require_master: false
-			}
-		}
+EsTcpConnection.prototype.readAllEventsForward = function(readData, cb) {
+	this.enqueueOperation({
+		name: 'ReadAllEventsForward'
+	, auth: readData.auth
+	, data: readData
+	, cb: cb
 	})
 }
 
