@@ -325,13 +325,132 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 		})
 	})
 
+  it('setting_structured_metadata_with_custom_properties_returns_them_untouched', function(done) {
+    var stream = 'setting_structured_metadata_with_custom_properties_returns_them_untouched'
+   		, setData = {
+					expectedMetastreamVersion: client.expectedVersion.emptyStream
+				, metadata: client.createStreamMetadata({
+						maxCount: 17,
+						maxAge: 123321,
+						truncateBefore: 23,
+						cacheControl: 7654321,
+						acl: {
+						   readRoles: 'readRole',
+						   writeRoles: 'writeRole',
+						   deleteRoles: 'deleteRole',
+						   metaWriteRoles: 'metaWriteRole'
+						},
+						customString: 'a string',
+						customInt: -179,
+						customDouble: 1.7,
+						customLong: 123123123123123123,
+						customBool: true,
+						customNullable: null,
+						customRawJson: {
+						   subProperty: 999
+						}
+          })
+				}
 
-  it('setting_structured_metadata_with_custom_properties_returns_them_untouched')
-    //var stream = 'setting_structured_metadata_with_custom_properties_returns_them_untouched'
-  it('setting_structured_metadata_with_multiple_roles_can_be_read_back')
-    //var stream = 'setting_structured_metadata_with_multiple_roles_can_be_read_back'
-  it('setting_correct_metadata_with_multiple_roles_in_acl_allows_to_read_it_as_structured_metadata')
-    //var stream = 'setting_correct_metadata_with_multiple_roles_in_acl_allows_to_read_it_as_structured_metadata'
+		connection.setStreamMetadata(stream, setData, function(err) {
+			if(err) return done(err)
+
+			connection.getStreamMetadata(stream, {}, function(err, result) {
+				if(err) return done(err)
+
+				result.Stream.should.equal(stream)
+				result.IsStreamDeleted.should.be.false
+				result.MetastreamVersion.should.equal(0)
+				result.StreamMetadata.MaxCount.should.equal(17)
+				result.StreamMetadata.MaxAge.should.equal(123321)
+				result.StreamMetadata.TruncateBefore.should.equal(23)
+				result.StreamMetadata.CacheControl.should.equal(7654321)
+
+				result.StreamMetadata.Acl.ReadRole.should.equal('readRole')
+				result.StreamMetadata.Acl.WriteRole.should.equal('writeRole')
+				result.StreamMetadata.Acl.DeleteRole.should.equal('deleteRole')
+				result.StreamMetadata.Acl.MetaWriteRole.should.equal('metaWriteRole')
+
+				result.StreamMetadata.customString.should.equal('a string')
+				result.StreamMetadata.customInt.should.equal(-179)
+				result.StreamMetadata.customDouble.should.equal(1.7)
+				result.StreamMetadata.customLong.should.equal(123123123123123123)
+				result.StreamMetadata.customBool.should.equal(true)
+				;(result.StreamMetadata.customNullable === null).should.be.true
+				result.StreamMetadata.customRawJson.should.eql({ subProperty: 999 })
+
+				done()
+			})
+		})
+	})
+
+  it('setting_structured_metadata_with_multiple_roles_can_be_read_back', function(done) {
+    var stream = 'setting_structured_metadata_with_multiple_roles_can_be_read_back'
+   		, setData = {
+					expectedMetastreamVersion: client.expectedVersion.emptyStream
+				, metadata: client.createStreamMetadata({
+						acl: {
+							readRoles: ['r1', 'r2', 'r3']
+						, writeRoles: ['w1', 'w2']
+						, deleteRoles: ['d1', 'd2', 'd3', 'd4']
+						, metaWriteRoles: ['mw1', 'mw2']
+						}
+          })
+				}
+
+		connection.setStreamMetadata(stream, setData, function(err) {
+			if(err) return done(err)
+
+			connection.getStreamMetadata(stream, {}, function(err, result) {
+				if(err) return done(err)
+
+				result.Stream.should.equal(stream)
+				result.IsStreamDeleted.should.be.false
+				result.MetastreamVersion.should.equal(0)
+
+				result.StreamMetadata.Acl.ReadRoles.should.eql(['r1', 'r2', 'r3'])
+				result.StreamMetadata.Acl.WriteRoles.should.eql(['w1', 'w2'])
+				result.StreamMetadata.Acl.DeleteRoles.should.eql(['d1', 'd2', 'd3', 'd4'])
+				result.StreamMetadata.Acl.MetaWriteRoles.should.eql(['mw1', 'mw2'])
+
+				done()
+			})
+		})
+	})
+
+  it('setting_correct_metadata_with_multiple_roles_in_acl_allows_to_read_it_as_structured_metadata', function(done) {
+    var stream = 'setting_correct_metadata_with_multiple_roles_in_acl_allows_to_read_it_as_structured_metadata'
+   		, setData = {
+					expectedMetastreamVersion: client.expectedVersion.emptyStream
+				, metadata: new Buffer(JSON.stringify({
+						$acl: {
+							$r: ['r1', 'r2', 'r3']
+						, $w: ['w1', 'w2']
+						, $d: ['d1', 'd2', 'd3', 'd4']
+						, $mw: ['mw1', 'mw2']
+						}
+          }))
+				}
+
+		connection.setStreamMetadata(stream, setData, function(err) {
+			if(err) return done(err)
+
+			connection.getStreamMetadata(stream, {}, function(err, result) {
+				if(err) return done(err)
+
+				result.Stream.should.equal(stream)
+				result.IsStreamDeleted.should.be.false
+				result.MetastreamVersion.should.equal(0)
+
+				result.StreamMetadata.Acl.ReadRoles.should.eql(['r1', 'r2', 'r3'])
+				result.StreamMetadata.Acl.WriteRoles.should.eql(['w1', 'w2'])
+				result.StreamMetadata.Acl.DeleteRoles.should.eql(['d1', 'd2', 'd3', 'd4'])
+				result.StreamMetadata.Acl.MetaWriteRoles.should.eql(['mw1', 'mw2'])
+
+				done()
+			})
+		})
+	})
 
 
   after(function(done) {
