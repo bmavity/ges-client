@@ -34,8 +34,6 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 			connection.getStreamMetadataAsRawBytes(stream, {}, function(err, result) {
 				if(err) return done(err)
 
-				console.log(result.StreamMetadata.toString())
-
 				result.Stream.should.equal(stream)
 				result.IsStreamDeleted.should.be.false
 				result.MetastreamVersion.should.equal(0)
@@ -46,8 +44,72 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 		})
   })
 
-  it('setting_metadata_few_times_returns_last_metadata_info')
-    //var stream = 'setting_metadata_few_times_returns_last_metadata_info'
+  it('setting_metadata_few_times_returns_last_metadata_info', function(done) {
+    var stream = 'setting_metadata_few_times_returns_last_metadata_info'
+			, setData1 = {
+					expectedMetastreamVersion: client.expectedVersion.emptyStream
+				, metadata: client.createStreamMetadata({
+						maxCount: 17
+					, maxAge: 3735928559 //0xDEADBEEF
+					, truncateBefore: 10
+					, cacheControl: 180013754 //0xABACABA
+					})
+				}
+
+/*
+						Assert.AreEqual(stream, meta.Stream);
+            Assert.AreEqual(false, meta.IsStreamDeleted);
+            Assert.AreEqual(0, meta.MetastreamVersion);
+            Assert.AreEqual(metadata.MaxCount, meta.StreamMetadata.MaxCount);
+            Assert.AreEqual(metadata.MaxAge, meta.StreamMetadata.MaxAge);
+            Assert.AreEqual(metadata.TruncateBefore, meta.StreamMetadata.TruncateBefore);
+            Assert.AreEqual(metadata.CacheControl, meta.StreamMetadata.CacheControl);
+*/
+		connection.setStreamMetadata(stream, setData1, function(err) {
+			if(err) return done(err)
+
+			connection.getStreamMetadata(stream, {}, function(err, result) {
+				if(err) return done(err)
+
+				result.Stream.should.equal(stream)
+				result.IsStreamDeleted.should.be.false
+				result.MetastreamVersion.should.equal(0)
+				result.StreamMetadata.MaxCount.should.equal(17)
+				result.StreamMetadata.MaxAge.should.equal(3735928559)
+				result.StreamMetadata.TruncateBefore.should.equal(10)
+				result.StreamMetadata.CacheControl.should.equal(180013754)
+
+				var setData2 = {
+							expectedMetastreamVersion: 0
+						, metadata: client.createStreamMetadata({
+								maxCount: 37
+							, maxAge: 3203391149 //0xBEEFDEAD
+							, truncateBefore: 24
+							, cacheControl: 58714794925 //0xDABACABAD
+							})
+						}
+
+				connection.setStreamMetadata(stream, setData2, function(err) {
+					if(err) return done(err)
+
+					connection.getStreamMetadata(stream, {}, function(err, result) {
+						if(err) return done(err)
+
+						result.Stream.should.equal(stream)
+						result.IsStreamDeleted.should.be.false
+						result.MetastreamVersion.should.equal(1)
+						result.StreamMetadata.MaxCount.should.equal(37)
+						result.StreamMetadata.MaxAge.should.equal(3203391149)
+						result.StreamMetadata.TruncateBefore.should.equal(24)
+						result.StreamMetadata.CacheControl.should.equal(58714794925)
+
+						done()
+					})
+				})
+			})
+		})
+  })
+
   it('trying_to_set_metadata_with_wrong_expected_version_fails')
     //var stream = 'trying_to_set_metadata_with_wrong_expected_version_fails'
   it('setting_metadata_with_expected_version_any_works')

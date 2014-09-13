@@ -6,7 +6,8 @@ var util = require('util')
 	, systemStreams = require('./systemStreams')
 	, eventData = require('../eventData')
 	, systemEventTypes = require('./systemEventTypes')
-	, rawStreamMetadata = require('./rawStreamMetadataResult')
+	, streamMetadata = require('./streamMetadata')
+	, streamMetadataResult = require('./streamMetadataResult')
 
 module.exports = createConnection
 
@@ -95,21 +96,6 @@ EsTcpConnection.prototype.enqueueOperation = function(operationData) {
 	})
 }
 
-EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData, cb) {
-	var readData = {
-				eventNumber: -1
-			, auth: getData.auth
-			}
-	this.readEvent(systemStreams.metastreamOf(stream), readData, function(err, result) {
-		if(err) return cb(err)
-
-		var evt = result.Event.OriginalEvent
-		if(result.Status === 'Success') {
-			cb(null, rawStreamMetadata(stream, false, evt.EventNumber, evt.Data))
-		}
-	})
-}
-
 EsTcpConnection.prototype.isInState = function(stateName) {
 	return this._handler.isInState(stateName)
 }
@@ -194,6 +180,29 @@ EsTcpConnection.prototype.setStreamMetadata = function(stream, setData, cb) {
 	, auth: setData.auth
 	, data: appendData
 	, cb: cb
+	})
+}
+
+EsTcpConnection.prototype.getStreamMetadata = function(stream, getData, cb) {
+	this.getStreamMetadataAsRawBytes(stream, getData, function(err, result) {
+		if(err) return cb(err)
+		var metadata = streamMetadata(result.StreamMetadata)
+		cb(null, streamMetadataResult(result.Stream, result.IsStreamDeleted, result.MetastreamVersion, metadata))
+	})
+}
+
+EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData, cb) {
+	var readData = {
+				eventNumber: -1
+			, auth: getData.auth
+			}
+	this.readEvent(systemStreams.metastreamOf(stream), readData, function(err, result) {
+		if(err) return cb(err)
+
+		var evt = result.Event.OriginalEvent
+		if(result.Status === 'Success') {
+			cb(null, streamMetadataResult(stream, false, evt.EventNumber, evt.Data))
+		}
 	})
 }
 
