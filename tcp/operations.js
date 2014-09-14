@@ -29,7 +29,11 @@ function OperationItem(operation) {
 			return cb(ex)
 		}
 
-		if(payload.result === 'StreamDeleted') {
+		if(payload.result === 'AccessDenied') {
+			return cb(new Error(payload.message))
+		}
+
+		if(payload.result === 'StreamDeleted' && payload.error) {
 			return cb(new Error(payload.message))
 		}
 		
