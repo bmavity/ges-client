@@ -11,6 +11,7 @@ Object.defineProperties(module.exports, {
 , maxRecordCount: { value: 2147483647 }
 , createEventData: { value: require('./eventData') }
 , createStreamMetadata: { value: require('./tcp/streamMetadata') }
+, eventNumber: { value: require('./tcp/eventNumber') }
 , position: { value: require('./tcp/position') }
 , streamPosition: { value: streamPosition }
 , systemEventTypes: { value: require('./tcp/systemEventTypes') }
