@@ -6,7 +6,7 @@ var client = require('../../../')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
 
-describe('appending_to_implicitly_created_stream', function() {
+describe('transaction', function() {
 	var es
 		, connection
 
