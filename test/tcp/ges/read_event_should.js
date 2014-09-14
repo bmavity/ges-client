@@ -28,7 +28,15 @@ describe('read_event_should', function() {
 							]
 						}
 
-				connection.appendToStream('test-stream', appendData, done)
+				connection.appendToStream('test-stream', appendData, function(err) {
+					if(err) return done(err)
+					var deleteData = {
+								expectedVersion: client.expectedVersion.emptyStream
+							, hardDelete: true
+							}
+
+					connection.deleteStream('deleted-stream', deleteData, done)
+				})
 			})
 		})
 	})
@@ -90,7 +98,20 @@ describe('read_event_should', function() {
   	})
   })
 
-  it('notify_using_status_code_if_stream_was_deleted')
+  it('notify_using_status_code_if_stream_was_deleted', function(done) {
+  	var readData = {
+  		eventNumber: 5
+  	}
+  	connection.readEvent('deleted-stream', readData, function(err, result) {
+  		if(err) return done(err)
+
+  		result.Status.should.equal('NoStream')
+  		(result.Event === null).should.be.true
+  		result.Stream.should.equal('deleted-stream')
+  		result.EventNumber.should.equal(5)
+  		done()
+  	})
+  })
 
   it('notify_using_status_code_if_stream_does_not_have_event', function(done) {
   	var readData = {
