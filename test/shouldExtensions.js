@@ -1,4 +1,7 @@
 var should = require('should')
+	, dummy = {}
+
+module.exports = should
 
 should.use(function(should, Assertion) {
   Assertion.add('matchBuffer', function(val, description) {
@@ -24,6 +27,20 @@ should.use(function(should, Assertion) {
 
   Assertion.alias('matchEvents', 'matchEvent')
 })
+
+should.fail = function() {
+	dummy.should.eql(null, 'Should Fail.')
+}
+
+should.pass = function() {
+	dummy.should.eql({}, 'Should Pass.')
+}
+
+should.be = {
+	null: function(actual) {
+		(actual === null).should.be.true
+	}
+}
 
 
 function getArray(obj) {
