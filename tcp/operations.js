@@ -33,7 +33,8 @@ function OperationItem(operation) {
 			return cb(new Error(payload.message))
 		}
 
-		if(payload.result === 'StreamDeleted' && payload.error) {
+		//TODO: Investigate further if this is needed
+		if(payload.result === 'StreamDeleted' && operation.requestType === 'WriteEvents') {
 			return cb(new Error(payload.message))
 		}
 		
@@ -69,7 +70,8 @@ var operations = {
 					, hasPreparePosition = payload.prepare_position || payload.prepare_position === 0
 
 			  return {
-					NextExpectedVersion: payload.last_event_number
+			  	Status: payload.result
+				, NextExpectedVersion: payload.last_event_number
 			  , LogPosition: position(payload)
 				}
 			}
