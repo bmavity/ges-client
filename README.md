@@ -1,4 +1,3 @@
-[![Stories in Ready](https://badge.waffle.io/bmavity/ges-client.png?label=ready&title=Ready)](https://waffle.io/bmavity/ges-client)
 ges-client
 =======
 
@@ -9,6 +8,8 @@ ges-client
 
 [![NPM](https://nodei.co/npm/ges-client.png?stars&downloads&downloadRank)](https://nodei.co/npm/ges-client/) [![NPM](https://nodei.co/npm-dl/ges-client.png?months=6&height=3)](https://nodei.co/npm/ges-client/)
 
+**Want to help out? Check out a waiting issue**
+[![Stories in Ready](https://badge.waffle.io/bmavity/ges-client.png?label=ready&title=Ready)](https://waffle.io/bmavity/ges-client)
 
   * <a href="#intro">Introduction</a>
   * <a href="#basic">Basic usage</a>
@@ -43,9 +44,12 @@ var connection = ges()
 	, stream = 'intro-events'
 
 // 2) Append events that can be read
-var thingsThatHappened = [array of events]
 connection.on('connect', function() {
-	connection.appendToStream(stream, ges.expectedVersion.emptyStream, thingsThatHappened, function(err, appendResult) {
+	var appendData = {
+	      expectedVersion: ges.expectedVersion.emptyStream
+	    , events: [array of events]
+			}
+	connection.appendToStream(stream, appendData, function(err, appendResult) {
 	  if(err) return console.log('Ooops!', err) // connection error
   	
 	  // 3) Read first events from the stream
@@ -70,7 +74,6 @@ var connection = ges()
 	, stream = 'intro-events'
 
 // 2) Create a subscription
-var thingsThatHappened = [array of events]
 connection.on('connect', function() {
   var subscription = connection.subscribeToStream(stream)
 
@@ -78,6 +81,14 @@ connection.on('connect', function() {
   subscription.on('event', function(evt) {
   	// ta da!
   	console.log(evt)
+  })
+
+	var appendData = {
+	      expectedVersion: ges.expectedVersion.emptyStream
+	    , events: [array of events]
+			}
+	connection.appendToStream(stream, appendData, function(err, appendResult) {
+	  if(err) return console.log('Ooops!', err) // connection error
   })
 })
 ```
@@ -87,14 +98,14 @@ Major Feature Status
 -------------------
 
 * Connection (Partial - not all events are available)
-* Append to stream (Partial - except for transactions/deleted)
+* Append to stream (Partial - except for transactions)
 * Read from stream (Partial - forward reads only)
 * Subscriptions (Partial - live subscription to stream only)
-* Read from all (Not Started)
+* Read from all (Partial - except for linktos)
 * Stream ACLs (Not Started)
 * Transations (Not Started)
-* Stream deletes (Not Started)
-* Stream metadata (Not Started)
+* Stream deletes (Complete)
+* Stream metadata (Partial - except for maxCount and truncateBefore specific tests)
 
 <a name="license"></a>
 License &amp; copyright
