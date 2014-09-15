@@ -60,6 +60,14 @@ should.be = {
 	}
 }
 
+should.not = {
+	be: {
+		null: function(actual) {
+			(actual === null).should.be.false
+		}
+	}
+}
+
 
 function getArray(obj) {
 	return Array.isArray(obj) ? obj : [ obj ]

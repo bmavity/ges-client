@@ -5,6 +5,7 @@ var util = require('util')
 	, createSubscription = require('./subscription')
 	, systemStreams = require('./systemStreams')
 	, eventData = require('../eventData')
+	, eventNumber = require('./eventNumber')
 	, systemEventTypes = require('./systemEventTypes')
 	, streamMetadata = require('./streamMetadata')
 	, streamMetadataResult = require('./streamMetadataResult')
@@ -224,10 +225,20 @@ EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData
 	this.readEvent(systemStreams.metastreamOf(stream), readData, function(err, result) {
 		if(err) return cb(err)
 
-		var evt = result.Event.OriginalEvent
 		if(result.Status === 'Success') {
-			cb(null, streamMetadataResult(stream, false, evt.EventNumber, evt.Data))
+			var evt = result.Event.OriginalEvent
+			return cb(null, streamMetadataResult(stream, false, evt.EventNumber, evt.Data))
 		}
+
+		if(result.Status === 'StreamDeleted') {
+			return cb(null, streamMetadataResult(stream, true, eventNumber.deletedStream, streamMetadata()))
+		}
+
+		if(result.Status === 'NotFound' || result.Status === 'NoStream') {
+			return cb(null, streamMetadataResult(stream, false, -1))
+		}
+
+		cb(new Error('Unexpected ReadEventResult: ' + result.Status + '.'))
 	})
 }
 

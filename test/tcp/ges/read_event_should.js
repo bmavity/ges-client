@@ -5,8 +5,7 @@ var client = require('../../../')
 	, range = require('../../range')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
-
-require('../../shouldExtensions')
+	, should = require('../../shouldExtensions')
 
 describe('read_event_should', function() {
 	var es
@@ -79,7 +78,7 @@ describe('read_event_should', function() {
   		if(err) return done(err)
   		
   		result.Status.should.equal('NoStream')
-  		(result.Event === null).should.be.true
+	  	should.be.null(result.Event)
   		result.Stream.should.equal('unexisting-stream')
   		result.EventNumber.should.equal(5)
   		done()
@@ -105,8 +104,8 @@ describe('read_event_should', function() {
   	connection.readEvent('deleted-stream', readData, function(err, result) {
   		if(err) return done(err)
 
-  		result.Status.should.equal('NoStream')
-  		(result.Event === null).should.be.true
+  		result.Status.should.equal('StreamDeleted')
+	  	should.be.null(result.Event)
   		result.Stream.should.equal('deleted-stream')
   		result.EventNumber.should.equal(5)
   		done()
@@ -121,7 +120,7 @@ describe('read_event_should', function() {
   		if(err) return done(err)
 
   		result.Status.should.equal('NotFound')
-  		(result.Event === null).should.be.true
+	  	should.be.null(result.Event)
   		result.Stream.should.equal('test-stream')
   		result.EventNumber.should.equal(5)
   		done()

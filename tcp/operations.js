@@ -34,7 +34,8 @@ function OperationItem(operation) {
 		}
 
 		//TODO: Investigate further if this is needed
-		if(payload.result === 'StreamDeleted' && operation.requestType === 'WriteEvents') {
+		var errorIfDeleted = ['WriteEvents', 'DeleteStream']
+		if(payload.result === 'StreamDeleted' && errorIfDeleted.indexOf(operation.requestType) !== -1) {
 			return cb(new Error(payload.message))
 		}
 		
@@ -263,7 +264,7 @@ function toEventStoreEvent(evt) {
 }
 
 function fromEventStoreEvent(rawEvent) {
-	var recordedEvent = toRecordedEvent(rawEvent.event)
+	var recordedEvent = rawEvent.event ? toRecordedEvent(rawEvent.event) : null
 		, recordedLink = rawEvent.link ? toRecordedEvent(rawEvent.link) : null
 	return {
 		Event: recordedEvent

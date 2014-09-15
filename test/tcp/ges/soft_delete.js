@@ -279,7 +279,6 @@ describe('soft_delete', function() {
 
 	    			connection.getStreamMetadata(stream, {}, function(err, metadataResult) {
 	    				if(err) return done(err)
-	    				console.log(metadataResult)
 
 	    				metadataResult.IsStreamDeleted.should.be.true
 

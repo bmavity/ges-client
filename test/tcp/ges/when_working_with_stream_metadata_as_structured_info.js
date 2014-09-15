@@ -5,15 +5,7 @@ var client = require('../../../')
 	, range = require('../../range')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
-
-require('../../shouldExtensions')
-function shouldBeNull() {
-	return (obj === null).should.be.true
-}
-
-function shouldNotBeNull() {
-	return (obj === null).should.be.false
-}
+	, should = require('../../shouldExtensions')
 
 describe('when_working_with_stream_metadata_as_structured_info', function() {
 	var es
@@ -257,10 +249,10 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 			result.Stream.should.equal(stream)
 			result.IsStreamDeleted.should.be.false
 			result.MetastreamVersion.should.equal(-1)
-			result.StreamMetadata.MaxCount.should.equal(1)
-			shouldBeNull(result.StreamMetadata.MaxAge)
-			shouldBeNull(result.StreamMetadata.TruncateBefore)
-			shouldBeNull(result.StreamMetadata.CacheControl)
+			should.be.null(result.StreamMetadata.MaxCount)
+			should.be.null(result.StreamMetadata.MaxAge)
+			should.be.null(result.StreamMetadata.TruncateBefore)
+			should.be.null(result.StreamMetadata.CacheControl)
 
 			done()
 		})
@@ -298,10 +290,11 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 					result.Stream.should.equal(stream)
 					result.IsStreamDeleted.should.be.true
 					result.MetastreamVersion.should.equal(client.eventNumber.deletedStream)
-					shouldBeNull(result.StreamMetadata)
-					shouldBeNull(result.StreamMetadata)
-					shouldBeNull(result.StreamMetadata)
-					shouldBeNull(result.StreamMetadata)
+					should.be.null(result.StreamMetadata.MaxCount)
+					should.be.null(result.StreamMetadata.MaxAge)
+					should.be.null(result.StreamMetadata.TruncateBefore)
+					should.be.null(result.StreamMetadata.CacheControl)
+					should.be.null(result.StreamMetadata.Acl)
 
 					done()
 				})

@@ -179,6 +179,7 @@ describe('when_having_truncatebefore_set_for_stream', function() {
 
 									readResult.Status.should.equal('Success')
 									readResult.Event.OriginalEvent.EventId.should.equal(testEvents[1].EventId)
+									done()
 								})
 							})
 						})
@@ -237,6 +238,7 @@ describe('when_having_truncatebefore_set_for_stream', function() {
 
 									readResult.Status.should.equal('Success')
 									readResult.Event.OriginalEvent.EventId.should.equal(testEvents[3].EventId)
+									done()
 								})
 							})
 						})
@@ -289,13 +291,14 @@ describe('when_having_truncatebefore_set_for_stream', function() {
 							connection.readEvent(stream, { eventNumber: 1 }, function(err, readResult) {
 								if(err) return done(err)
 
-								readResult.Status.should.equal('NotFound')
+								readResult.Status.should.equal('Success')
 
 								connection.readEvent(stream, { eventNumber: 2 }, function(err, readResult) {
 									if(err) return done(err)
 
 									readResult.Status.should.equal('Success')
 									readResult.Event.OriginalEvent.EventId.should.equal(testEvents[2].EventId)
+									done()
 								})
 							})
 						})
@@ -355,6 +358,7 @@ describe('when_having_truncatebefore_set_for_stream', function() {
 
 									readResult.Status.should.equal('Success')
 									readResult.Event.OriginalEvent.EventId.should.equal(testEvents[3].EventId)
+									done()
 								})
 							})
 						})
