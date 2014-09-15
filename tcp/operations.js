@@ -190,6 +190,35 @@ var operations = {
 			}
 		}
 	}
+, ReadStreamEventsBackward: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'ReadStreamEventsBackward'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('ReadStreamEvents', {
+					event_stream_id: operationData.stream
+				, from_event_number: payload.start
+				, max_count: payload.count
+				, resolve_link_tos: !!payload.resolveLinkTos
+				, require_master: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'ReadStreamEventsCompleted'
+		, toResponseObject: function(payload) {
+				var events = payload.events || []
+				return {
+					Status: payload.result
+				, Events: events.map(fromEventStoreEvent)
+				, NextEventNumber: payload.next_event_number
+				, LastEventNumber: payload.last_event_number
+				, IsEndOfStream: payload.is_end_of_stream
+				}
+			}
+		}
+	}
 , ReadStreamEventsForward: function(operationData) {
 		return {
 			auth: operationData.auth

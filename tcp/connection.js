@@ -151,6 +151,23 @@ EsTcpConnection.prototype.readEvent = function(stream, readData, cb) {
 	})
 }
 
+EsTcpConnection.prototype.readStreamEventsBackward = function(stream, readData, cb) {
+	if(readData.count <= 0) {
+		setImmediate(function() {
+			cb(new Error('Argument: count must be positive.'))
+		})
+		return
+	}
+
+	this.enqueueOperation({
+		name: 'ReadStreamEventsBackward'
+	, stream: stream
+	, auth: readData.auth
+	, data: readData
+	, cb: cb
+	})
+}
+
 EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, cb) {
 	if(readData.start < 0) {
 		setImmediate(function() {

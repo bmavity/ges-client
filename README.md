@@ -99,7 +99,7 @@ Major Feature Status
 
 * Connection (Partial - not all events are available)
 * Append to stream (Partial - except for transactions)
-* Read from stream (Partial - forward reads only)
+* Read from stream (Complete)
 * Subscriptions (Partial - live subscription to stream only)
 * Read from all (Partial - except for linktos)
 * Stream ACLs (Not Started)
