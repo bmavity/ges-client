@@ -58,20 +58,20 @@ var operations = {
 				var payload = operationData.data
 					, events = !payload.events ? [] : Array.isArray(payload.events) ? payload.events : [ payload.events ]
 				return messageParser.serialize('WriteEvents', {
-					event_stream_id: operationData.stream
-				, expected_version: payload.expectedVersion
+					eventStreamId: operationData.stream
+				, expectedVersion: payload.expectedVersion
 				, events: events.map(toEventStoreEvent)
-				, require_master: !!payload.requireMaster
+				, requireMaster: !!payload.requireMaster
 				})
 			}
 		, responseType: 'WriteEventsCompleted'
 		, toResponseObject: function(payload) {
-				var hasCommitPosition = payload.commit_position || payload.commit_position === 0
-					, hasPreparePosition = payload.prepare_position || payload.prepare_position === 0
+				var hasCommitPosition = payload.commitPosition || payload.commitPosition === 0
+					, hasPreparePosition = payload.preparePosition || payload.preparePosition === 0
 
 			  return {
 			  	Status: payload.result
-				, NextExpectedVersion: payload.last_event_number
+				, NextExpectedVersion: payload.lastEventNumber
 			  , LogPosition: position(payload)
 				}
 			}
@@ -85,10 +85,10 @@ var operations = {
 		, toRequestPayload: function() {
 				var payload = operationData.data
 				return messageParser.serialize('DeleteStream', {
-					event_stream_id: operationData.stream
-				, expected_version: payload.expectedVersion
-				, require_master: !!payload.requireMaster
-				, hard_delete: !!payload.hardDelete
+					eventStreamId: operationData.stream
+				, expectedVersion: payload.expectedVersion
+				, requireMaster: !!payload.requireMaster
+				, hardDelete: !!payload.hardDelete
 				})
 			}
 		, responseType: 'DeleteStreamCompleted'
@@ -109,11 +109,11 @@ var operations = {
 				var payload = operationData.data
 
 				return messageParser.serialize('ReadAllEvents', {
-					commit_position: payload.position.commitPosition
-				, prepare_position: payload.position.preparePosition
-				, max_count: payload.maxCount
-				, resolve_link_tos: !!payload.resolveLinkTos
-				, require_master: !!payload.requireMaster
+					commitPosition: payload.position.commitPosition
+				, preparePosition: payload.position.preparePosition
+				, maxCount: payload.maxCount
+				, resolveLinkTos: !!payload.resolveLinkTos
+				, requireMaster: !!payload.requireMaster
 		  	})
 	  	}
 		, responseType: 'ReadAllEventsCompleted'
@@ -125,8 +125,8 @@ var operations = {
 				, IsEndOfStream: events.length === 0
 				, OriginalPosition: position(payload)
 				, NextPosition: position({
-						commit_position: payload.next_commit_position
-					, prepare_position: payload.next_prepare_position
+						commitPosition: payload.nextCommitPosition
+					, preparePosition: payload.nextPreparePosition
 					})
 				}
 			}
@@ -141,11 +141,11 @@ var operations = {
 				var payload = operationData.data
 
 				return messageParser.serialize('ReadAllEvents', {
-					commit_position: payload.position.commitPosition
-				, prepare_position: payload.position.preparePosition
-				, max_count: payload.maxCount
-				, resolve_link_tos: !!payload.resolveLinkTos
-				, require_master: !!payload.requireMaster
+					commitPosition: payload.position.commitPosition
+				, preparePosition: payload.position.preparePosition
+				, maxCount: payload.maxCount
+				, resolveLinkTos: !!payload.resolveLinkTos
+				, requireMaster: !!payload.requireMaster
 		  	})
 	  	}
 		, responseType: 'ReadAllEventsCompleted'
@@ -157,8 +157,8 @@ var operations = {
 				, IsEndOfStream: events.length === 0
 				, OriginalPosition: position(payload)
 				, NextPosition: position({
-						commit_position: payload.next_commit_position
-					, prepare_position: payload.next_prepare_position
+						commitPosition: payload.nextCommitPosition
+					, preparePosition: payload.nextPreparePosition
 					})
 				}
 			}
@@ -173,10 +173,10 @@ var operations = {
 				var payload = operationData.data
 
 				return messageParser.serialize('ReadEvent', {
-					event_stream_id: operationData.stream
-				, event_number: payload.eventNumber
-				, resolve_link_tos: !!payload.resolveLinkTos
-				, require_master: !!payload.requireMaster
+					eventStreamId: operationData.stream
+				, eventNumber: payload.eventNumber
+				, resolveLinkTos: !!payload.resolveLinkTos
+				, requireMaster: !!payload.requireMaster
 		  	})
 	  	}
 		, responseType: 'ReadEventCompleted'
@@ -199,11 +199,11 @@ var operations = {
 				var payload = operationData.data
 
 				return messageParser.serialize('ReadStreamEvents', {
-					event_stream_id: operationData.stream
-				, from_event_number: payload.start
-				, max_count: payload.count
-				, resolve_link_tos: !!payload.resolveLinkTos
-				, require_master: !!payload.requireMaster
+					eventStreamId: operationData.stream
+				, fromEventNumber: payload.start
+				, maxCount: payload.count
+				, resolveLinkTaos: !!payload.resolveLinkTos
+				, requireMaster: !!payload.requireMaster
 		  	})
 	  	}
 		, responseType: 'ReadStreamEventsCompleted'
@@ -212,9 +212,9 @@ var operations = {
 				return {
 					Status: payload.result
 				, Events: events.map(fromEventStoreEvent)
-				, NextEventNumber: payload.next_event_number
-				, LastEventNumber: payload.last_event_number
-				, IsEndOfStream: payload.is_end_of_stream
+				, NextEventNumber: payload.nextEventNumber
+				, LastEventNumber: payload.lastEventNumber
+				, IsEndOfStream: payload.isEndOfStream
 				}
 			}
 		}
@@ -228,11 +228,11 @@ var operations = {
 				var payload = operationData.data
 
 				return messageParser.serialize('ReadStreamEvents', {
-					event_stream_id: operationData.stream
-				, from_event_number: payload.start
-				, max_count: payload.count
-				, resolve_link_tos: !!payload.resolveLinkTos
-				, require_master: !!payload.requireMaster
+					eventStreamId: operationData.stream
+				, fromEventNumber: payload.start
+				, maxCount: payload.count
+				, resolveLinkTos: !!payload.resolveLinkTos
+				, requireMaster: !!payload.requireMaster
 		  	})
 	  	}
 		, responseType: 'ReadStreamEventsCompleted'
@@ -241,9 +241,9 @@ var operations = {
 				return {
 					Status: payload.result
 				, Events: events.map(fromEventStoreEvent)
-				, NextEventNumber: payload.next_event_number
-				, LastEventNumber: payload.last_event_number
-				, IsEndOfStream: payload.is_end_of_stream
+				, NextEventNumber: payload.nextEventNumber
+				, LastEventNumber: payload.lastEventNumber
+				, IsEndOfStream: payload.isEndOfStream
 				}
 			}
 		}
@@ -253,10 +253,10 @@ var operations = {
 
 function toEventStoreEvent(evt) {
 	return {
-		event_id: uuid.parse(evt.EventId, new Buffer(16))
-	, event_type: evt.Type
-	, data_content_type: evt.IsJson ? 1 : 0
-	, metadata_content_type: evt.IsJson ? 1 : 0
+		eventId: uuid.parse(evt.EventId, new Buffer(16))
+	, eventType: evt.Type
+	, dataContentType: evt.IsJson ? 1 : 0
+	, metadataContentType: evt.IsJson ? 1 : 0
 	, data: evt.Data
 	, metadata: evt.Metadata
 	}
@@ -277,15 +277,15 @@ function toRecordedEvent(systemRecord) {
 		, metadata = systemRecord.hasOwnProperty('metadata') || systemRecord.metadata !== null ? systemRecord.metadata : new Buffer(0)
 		, data = systemRecord.data === null ? new Buffer(0) : systemRecord.data
 	Object.defineProperties(recordedEvent, {
-		EventStreamId: { value: systemRecord.event_stream_id, enumerable: true }
-  , EventId: { value: uuid.unparse(systemRecord.event_id), enumerable: true }
-  , EventNumber: { value: systemRecord.event_number, enumerable: true }
-  , EventType: { value: systemRecord.event_type, enumerable: true }
+		EventStreamId: { value: systemRecord.eventStreamId, enumerable: true }
+  , EventId: { value: uuid.unparse(systemRecord.eventId), enumerable: true }
+  , EventNumber: { value: systemRecord.eventNumber, enumerable: true }
+  , EventType: { value: systemRecord.eventType, enumerable: true }
   , Data: { value: data, enumerable: true }
   , Metadata: { value: metadata, enumerable: true }  
-  , IsJson: { value: systemRecord.data_content_type === 1, enumerable: true }
+  , IsJson: { value: systemRecord.dataContentType === 1, enumerable: true }
   , Created: { value: systemRecord.created, enumerable: true }
-  , CreatedEpoch: { value: systemRecord.created_epoch, enumerable: true }
+  , CreatedEpoch: { value: systemRecord.createdEpoch, enumerable: true }
 	})
 	return recordedEvent
 }
