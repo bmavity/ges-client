@@ -65,7 +65,7 @@ describe('read_all_events_backward_should', function() {
 	it('return_partial_slice_if_not_enough_events', function(done) {
 		var readData = {
 					position: client.position.end
-				, maxCount: 30
+				, maxCount: 100
 				}
 		connection.readAllEventsBackward(readData, function(err, result) {
 			if(err) return done(err)
@@ -81,15 +81,13 @@ describe('read_all_events_backward_should', function() {
   it('return_events_in_reversed_order_compared_to_written', function(done) {
 		var readData = {
 					position: client.position.end
-				, maxCount: 20
+				, maxCount: 100
 				}
 		connection.readAllEventsBackward(readData, function(err, result) {
 			if(err) return done(err)
 
 			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
 			
-			// This fails due to system events appearing inside all stream.
-			// How does this pass in C# land?
 			nonSystemEvents.should.matchEvents(reversedEvents)
 			done()
 		})

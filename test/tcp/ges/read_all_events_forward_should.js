@@ -64,7 +64,7 @@ describe('read_all_events_forward_should', function() {
   it('return_events_in_same_order_as_written', function(done) {
 		var readData = {
 					position: client.position.start
-				, maxCount: 20
+				, maxCount: 100
 				}
 		connection.readAllEventsForward(readData, function(err, result) {
 			if(err) return done(err)
@@ -141,7 +141,7 @@ describe('read_all_events_forward_should', function() {
   it('return_partial_slice_if_not_enough_events', function(done) {
 		var readData = {
 					position: client.position.start
-				, maxCount: 30
+				, maxCount: 100
 				}
 		connection.readAllEventsForward(readData, function(err, result) {
 			if(err) return done(err)
