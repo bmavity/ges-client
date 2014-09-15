@@ -105,7 +105,7 @@ Major Feature Status
 * Stream ACLs (Not Started)
 * Transations (Not Started)
 * Stream deletes (Complete)
-* Stream metadata (Partial - except for maxCount and truncateBefore specific tests)
+* Stream metadata (Complete)
 
 <a name="license"></a>
 License &amp; copyright

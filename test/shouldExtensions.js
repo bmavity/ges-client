@@ -25,6 +25,24 @@ should.use(function(should, Assertion) {
     actual.should.eql(expected)
   })
 
+  Assertion.add('matchEventIdsWith', function(val, description) {
+    var actual = getArray(this.obj).map(getEventId)
+    	, expected = getArray(val).map(getEventId)
+
+    this.params = { operator: 'to match event ids with', expected: expected, showDiff: false, message: description }
+
+    actual.should.eql(expected)
+  })
+
+  Assertion.add('matchEventNumbersWith', function(val, description) {
+    var actual = getArray(this.obj).map(getEventNumber)
+    	, expected = getArray(val).map(getEventNumber)
+
+    this.params = { operator: 'to match event numbers with', expected: expected, showDiff: false, message: description }
+
+    actual.should.eql(expected)
+  })
+
   Assertion.alias('matchEvents', 'matchEvent')
 })
 
@@ -45,6 +63,14 @@ should.be = {
 
 function getArray(obj) {
 	return Array.isArray(obj) ? obj : [ obj ]
+}
+
+function getEventId(evt) {
+	return evt.EventId || evt.OriginalEvent.EventId
+}
+
+function getEventNumber(evt) {
+	return evt.OriginalEvent.EventNumber
 }
 
 function normalizeEvent(evt) {
