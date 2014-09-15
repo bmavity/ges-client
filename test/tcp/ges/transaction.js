@@ -11,17 +11,11 @@ describe('transaction', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5678 }, function(err, memory) {
+		ges({ tcpPort: 5011 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 5678 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 5011 }, done)
 		})
 	})
 

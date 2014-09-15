@@ -1,27 +1,21 @@
-var client = require('../../')
+var client = require('../../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
-	, createTestEvent = require('../createTestEvent')
-	, range = require('../range')
-	, streamWriter = require('../streamWriter')
-	, eventStreamCounter = require('../eventStreamCounter')
+	, createTestEvent = require('../../createTestEvent')
+	, range = require('../../range')
+	, streamWriter = require('../../streamWriter')
+	, eventStreamCounter = require('../../eventStreamCounter')
 
 describe('subscribe_to_stream_catching_up_should', function() {
 	var es
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 6789 }, function(err, memory) {
+		ges({ tcpPort: 5010 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 6789 })
-
-			connection.on('connect', function() {
-				done()
-			})
-
-			connection.on('error', done)
+			connection = client({ port: 5010 }, done)
 		})
 	})
 
@@ -41,20 +35,12 @@ describe('subscribe_to_stream_catching_up_should', function() {
     //var stream = 'filter_events_and_work_if_nothing_was_written_after_subscription'
 
   after(function(done) {
-  	var ended = false
-  	function endClean() {
-  		if(ended) return
-  		ended = true
-  		done()
-  	}
-  	try {
-	  	es.on('exit', endClean)
-	  	es.on('error', endClean)
-	  	connection.on('error', endClean)
+  	connection.close(function() {
+	  	es.on('exit', function(code, signal) {
+		  	done()
+	  	})
+	  	es.on('error', done)
 	  	es.kill()
-  	}
-  	finally {
-  		endClean()
-  	}
+  	})
   })
 })
