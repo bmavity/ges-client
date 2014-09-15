@@ -7,6 +7,13 @@ var client = require('../../../')
 	, eventStreamCounter = require('../../eventStreamCounter')
 
 require('../../shouldExtensions')
+function shouldBeNull() {
+	return (obj === null).should.be.true
+}
+
+function shouldNotBeNull() {
+	return (obj === null).should.be.false
+}
 
 describe('when_working_with_stream_metadata_as_structured_info', function() {
 	var es
@@ -251,9 +258,9 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 			result.IsStreamDeleted.should.be.false
 			result.MetastreamVersion.should.equal(-1)
 			result.StreamMetadata.MaxCount.should.equal(1)
-			(result.StreamMetadata.MaxAge === null).should.be.true
-			(result.StreamMetadata.TruncateBefore === null).should.be.true
-			(result.StreamMetadata.CacheControl === null).should.be.true
+			shouldBeNull(result.StreamMetadata.MaxAge)
+			shouldBeNull(result.StreamMetadata.TruncateBefore)
+			shouldBeNull(result.StreamMetadata.CacheControl)
 
 			done()
 		})
@@ -263,8 +270,44 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
   it('getting_metadata_for_metastream_returns_correct_metadata')
     //var stream = '$$getting_metadata_for_metastream_returns_correct_metadata'
 
-  it('getting_metadata_for_deleted_stream_returns_empty_stream_metadata_and_signals_stream_deletion')
-    //var stream = 'getting_metadata_for_deleted_stream_returns_empty_stream_metadata_and_signals_stream_deletion'
+  it('getting_metadata_for_deleted_stream_returns_empty_stream_metadata_and_signals_stream_deletion', function(done) {
+    var stream = 'getting_metadata_for_deleted_stream_returns_empty_stream_metadata_and_signals_stream_deletion'
+   		, setData = {
+					expectedMetastreamVersion: client.expectedVersion.emptyStream
+				, metadata: client.createStreamMetadata({
+						maxCount: 17
+					, maxAge: 3735928559 //0xDEADBEEF
+					, truncateBefore: 10
+					, cacheControl: 180013754 //0xABACABA
+					})
+				}
+
+		connection.setStreamMetadata(stream, setData, function(err) {
+			if(err) return done(err)
+			var deleteData = {
+						expectedVersion: client.expectedVersion.emptyStream
+					, hardDelete: true
+					}
+
+			connection.deleteStream(stream, deleteData, function(err) {
+				if(err) return done(err)
+
+				connection.getStreamMetadata(stream, {}, function(err, result) {
+					if(err) return done(err)
+
+					result.Stream.should.equal(stream)
+					result.IsStreamDeleted.should.be.true
+					result.MetastreamVersion.should.equal(client.eventNumber.deletedStream)
+					shouldBeNull(result.StreamMetadata)
+					shouldBeNull(result.StreamMetadata)
+					shouldBeNull(result.StreamMetadata)
+					shouldBeNull(result.StreamMetadata)
+
+					done()
+				})
+			})
+		})
+	})
 
   it('setting_correctly_formatted_metadata_as_raw_allows_to_read_it_as_structured_metadata', function(done) {
     var stream = 'setting_correctly_formatted_metadata_as_raw_allows_to_read_it_as_structured_metadata'

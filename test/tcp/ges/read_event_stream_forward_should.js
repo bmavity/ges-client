@@ -59,8 +59,26 @@ describe('read event stream forward should', function() {
 		})
   })
 
-  it('notify_using_status_code_if_stream_was_deleted')
-      //'read_event_stream_forward_should_notify_using_status_code_if_stream_was_deleted'
+  it('notify_using_status_code_if_stream_was_deleted', function(done) {
+    var stream = 'read_event_stream_forward_should_notify_using_status_code_if_stream_was_deleted'
+    	, deleteData = {
+    			expectedVersion: client.expectedVersion.emptyStream
+    		, hardDelete: true
+	    	}
+
+    connection.deleteStream(stream, deleteData, function(err, deleteResult) {
+			var readOptions = {
+						start: 0
+					, count: 1
+					}
+			connection.readStreamEventsForward(stream, readOptions, function(err, result) {
+				if(err) return done(err)
+
+		  	result.Status.should.equal('StreamDeleted')
+				done()
+			})
+    })
+  })
 
   it('return no events when called on empty stream', function(done) {
     var stream = 'read_event_stream_forward_should_return_single_event_when_called_on_empty_stream'

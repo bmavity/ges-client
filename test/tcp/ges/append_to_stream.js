@@ -124,8 +124,25 @@ describe('append to stream', function() {
     })
   })
   
-  it('should_fail_writing_with_correct_exp_ver_to_deleted_stream')
-    //var stream = 'should_fail_writing_with_correct_exp_ver_to_deleted_stream'
+  it('should_fail_writing_with_correct_exp_ver_to_deleted_stream', function(done) {
+    var stream = 'should_fail_writing_with_correct_exp_ver_to_deleted_stream'
+    	, deleteData = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, hardDelete: true
+	    	}
+    connection.deleteStream(stream, deleteData, function(err, deleteResult) {
+    	if(err) return done(err)
+    	var appendData = {
+			    	expectedVersion: client.expectedVersion.noStream
+		    	, events: createTestEvent()
+		    	}
+
+	    connection.appendToStream(stream, appendData, function(err, appendResult) {
+	    	(err === null).should.be.false
+	    	done()
+	    })
+	  })
+  })
 
   it('should_return_log_position_when_writing', function(done) {
     var stream = 'should_return_log_position_when_writing'
@@ -144,11 +161,45 @@ describe('append to stream', function() {
     })
   })
 
-  it('should_fail_writing_with_any_exp_ver_to_deleted_stream')
-    //var stream = 'should_fail_writing_with_any_exp_ver_to_deleted_stream'
+  it('should_fail_writing_with_any_exp_ver_to_deleted_stream', function(done) {
+    var stream = 'should_fail_writing_with_any_exp_ver_to_deleted_stream'
+    	, deleteData = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, hardDelete: true
+	    	}
+    connection.deleteStream(stream, deleteData, function(err, deleteResult) {
+    	if(err) return done(err)
+    	var appendData = {
+			    	expectedVersion: client.expectedVersion.any
+		    	, events: createTestEvent()
+		    	}
 
-  it('should_fail_writing_with_invalid_exp_ver_to_deleted_stream')
-    //var stream = 'should_fail_writing_with_invalid_exp_ver_to_deleted_stream'
+	    connection.appendToStream(stream, appendData, function(err, appendResult) {
+	    	(err === null).should.be.false
+	    	done()
+	    })
+	  })
+  })
+
+  it('should_fail_writing_with_invalid_exp_ver_to_deleted_stream', function(done) {
+    var stream = 'should_fail_writing_with_invalid_exp_ver_to_deleted_stream'
+    	, deleteData = {
+		    	expectedVersion: client.expectedVersion.emptyStream
+	    	, hardDelete: true
+	    	}
+    connection.deleteStream(stream, deleteData, function(err, deleteResult) {
+    	if(err) return done(err)
+    	var appendData = {
+			    	expectedVersion: 5
+		    	, events: createTestEvent()
+		    	}
+
+	    connection.appendToStream(stream, appendData, function(err, appendResult) {
+	    	(err === null).should.be.false
+	    	done()
+	    })
+	  })
+  })
 
   it('should_append_with_correct_exp_ver_to_existing_stream', function(done) {
     var stream = 'should_append_with_correct_exp_ver_to_existing_stream'

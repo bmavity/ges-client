@@ -29,6 +29,15 @@ function OperationItem(operation) {
 			return cb(ex)
 		}
 
+		if(payload.result === 'AccessDenied') {
+			return cb(new Error(payload.message))
+		}
+
+		//TODO: Investigate further if this is needed
+		if(payload.result === 'StreamDeleted' && operation.requestType === 'WriteEvents') {
+			return cb(new Error(payload.message))
+		}
+		
 		if(payload.result === 'WrongExpectedVersion') {
 			return cb(new Error(payload.message))
 		}
@@ -61,11 +70,32 @@ var operations = {
 					, hasPreparePosition = payload.prepare_position || payload.prepare_position === 0
 
 			  return {
-					NextExpectedVersion: payload.last_event_number
-				, LogPosition: {
-						CommitPosition: hasCommitPosition ? payload.commit_position : -1
-					, PreparePosition: hasPreparePosition ? payload.prepare_position : -1
-					}
+			  	Status: payload.result
+				, NextExpectedVersion: payload.last_event_number
+			  , LogPosition: position(payload)
+				}
+			}
+		}
+	}
+, DeleteStream: function(operationData) {
+		return {
+		  auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'DeleteStream'
+		, toRequestPayload: function() {
+				var payload = operationData.data
+				return messageParser.serialize('DeleteStream', {
+					event_stream_id: operationData.stream
+				, expected_version: payload.expectedVersion
+				, require_master: !!payload.requireMaster
+				, hard_delete: !!payload.hardDelete
+				})
+			}
+		, responseType: 'DeleteStreamCompleted'
+		, toResponseObject: function(payload) {
+			  return {
+			  	Status: payload.result
+			  , LogPosition: position(payload)
 				}
 			}
 		}
@@ -93,8 +123,11 @@ var operations = {
 					Status: payload.result
 				, Events: events.map(toResolvedEvent)
 				, IsEndOfStream: events.length === 0
-				, OriginalPosition: position(payload.commit_position, payload.prepare_position)
-				, NextPosition: position(payload.next_commit_position, payload.next_prepare_position)
+				, OriginalPosition: position(payload)
+				, NextPosition: position({
+						commit_position: payload.next_commit_position
+					, prepare_position: payload.next_prepare_position
+					})
 				}
 			}
 		}
@@ -122,8 +155,11 @@ var operations = {
 					Status: payload.result
 				, Events: events.map(toResolvedEvent)
 				, IsEndOfStream: events.length === 0
-				, OriginalPosition: position(payload.commit_position, payload.prepare_position)
-				, NextPosition: position(payload.next_commit_position, payload.next_prepare_position)
+				, OriginalPosition: position(payload)
+				, NextPosition: position({
+						commit_position: payload.next_commit_position
+					, prepare_position: payload.next_prepare_position
+					})
 				}
 			}
 		}
@@ -230,7 +266,7 @@ function toResolvedEvent(payload) {
 	Object.defineProperties(resolvedEvent, {
 		Event: { value: toRecordedEvent(payload.event), enumerable: true }
 	, Link: { value: !payload.link ? null : toRecordedEvent(payload.link), enumerable: true }
-	, OriginalPosition: { value: position(payload.commit_position, payload.prepare_position), enumerable: true }
+	, OriginalPosition: { value: position(payload), enumerable: true }
 	})
 	return resolvedEvent
 }

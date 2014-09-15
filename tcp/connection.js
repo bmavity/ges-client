@@ -69,6 +69,16 @@ EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
 	})
 }
 
+EsTcpConnection.prototype.deleteStream = function(stream, deleteData, cb) {
+	this.enqueueOperation({
+		name: 'DeleteStream'
+	, stream: stream
+	, auth: deleteData.auth
+	, data: deleteData
+	, cb: cb
+	})
+}
+
 EsTcpConnection.prototype.close = function(cb) {
 	this._handler.enqueueMessage({
 		name: 'CloseConnection'
