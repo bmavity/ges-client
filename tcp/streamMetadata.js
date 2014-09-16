@@ -19,7 +19,11 @@ function StreamMetadata(obj) {
 	}
 
 	if(Buffer.isBuffer(obj)) {
-		this._fromJSON(obj.toString())
+		if(obj.length === 0) {
+			this._fromObj({})
+		} else {
+			this._fromJSON(obj.toString())
+		}
 	} else {
 		this._fromObj(obj)
 	}

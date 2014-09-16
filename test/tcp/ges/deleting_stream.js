@@ -5,8 +5,7 @@ var client = require('../../../')
 	, range = require('../../range')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
-
-require('../../shouldExtensions')
+	, should = require('../../shouldExtensions')
 
 describe('deleting_stream', function() {
 	var es
@@ -101,7 +100,7 @@ describe('deleting_stream', function() {
 	    			, hardDelete: true
 			    	}
 	    	connection.deleteStream(stream, deleteData2, function(err, result) {
-	    		(err === null).should.be.false
+	    		should.not.be.null(err)
 
 	    		done()
 	    	})

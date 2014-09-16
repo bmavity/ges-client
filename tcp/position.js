@@ -11,8 +11,8 @@ function Position(commitPosition, preparePosition) {
 	}
 
 	if(!preparePosition) {
-		preparePosition = commitPosition.prepare_position
-		commitPosition = commitPosition.commit_position
+		preparePosition = commitPosition.preparePosition
+		commitPosition = commitPosition.commitPosition
 	}
 
 	Object.defineProperties(this, {

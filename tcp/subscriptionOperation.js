@@ -37,8 +37,8 @@ SubscriptionOperation.prototype.eventAppeared = function(evt) {
 SubscriptionOperation.prototype.toTcpMessage = function() {
 	var name = 'SubscribeToStream'
 		, payload = parser.serialize(name, {
-									event_stream_id: this._data.stream
-								, resolve_link_tos: !!this._data.data.resolveLinkTos
+									eventStreamId: this._data.stream
+								, resolveLinkTos: !!this._data.data.resolveLinkTos
 								})
 	return {
 		messageName: name

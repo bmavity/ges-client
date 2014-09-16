@@ -1,7 +1,7 @@
 var fs = require('fs')
 	, path = require('path')
 	, uuid = require('node-uuid')
-	, Schema = require('node-protobuf')
+	, Schema = require('protobuf').Schema
 	, schema = new Schema(fs.readFileSync(path.resolve(__dirname, 'ges_client.desc')))
 	, messageNamespace = 'EventStore.Client.Messages.' 
 
@@ -10,11 +10,14 @@ module.exports = {
 , serialize: serialize
 }
 
+function getMessageHandler(messageName) {
+	return schema[messageNamespace + messageName]
+}
 
 function parse(messageName, payload) {
-  return schema.Parse(payload, messageNamespace + messageName)
+  return getMessageHandler(messageName).parse(payload)
 }
 
 function serialize(messageName, message) {
-	return schema.Serialize(message, messageNamespace + messageName)
+  return getMessageHandler(messageName).serialize(message)
 }

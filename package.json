@@ -14,8 +14,8 @@
   "description": "(Get) EventStore Client",
   "dependencies": {
     "is": "^2.0.1",
-    "node-protobuf": "^1.2.0",
     "node-uuid": "^1.4.1",
+    "protobuf": "^0.11.0",
     "request": "2.34.x"
   },
   "devDependencies": {
