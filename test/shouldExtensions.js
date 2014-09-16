@@ -57,14 +57,14 @@ should.pass = function() {
 
 should.be = {
 	null: function(actual) {
-		(actual === null).should.be.true
+		(actual === null).should.equal(true, 'Object should be null.')
 	}
 }
 
 should.not = {
 	be: {
 		null: function(actual) {
-			(actual === null).should.be.false
+			(actual === null).should.equal(false, 'Object should not be null.')
 		}
 	}
 }
