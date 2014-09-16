@@ -12,14 +12,13 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
 	var es
 		, connection
 		, testEvents = createTestEvent(range(0, 20))
-		, port = 6100
 
-	beforeEach(function(done) {
-		ges({ tcpPort: port }, function(err, memory) {
+	before(function(done) {
+		ges({ tcpPort: 5014 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: port }, function(err) {
+			connection = client({ port: 5014 }, function(err) {
 				if(err) return done(err)
 					
 				var setData = {
@@ -49,11 +48,7 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
 								, hardDelete: true
 								}
 
-						connection.deleteStream('stream', deleteData, function(err) {
-							if(err) return done(err)
-							port += 1
-							done()
-						})
+						connection.deleteStream('stream', deleteData, done)
 					})
 				})
 			})
@@ -71,18 +66,22 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
   })
 
   it('returns_all_events_including_tombstone', function(done) {
-  	connection.readAllEventsForward({ position: client.position.start, maxCount: 100 }, function(err, readResult) {
+  	connection.readAllEventsForward({ position: client.position.start, maxCount: 200 }, function(err, readResult) {
   		if(err) return done(err)
-  		var lastEvent = readResult.Events.pop().Event
 
-  		readResult.Events.should.matchEvents(testEvents)
+  		var eventsOnStream = readResult.Events.filter(function(evt) {
+		  			return evt.Event.EventStreamId === 'stream'
+		  		})
+  			, lastEvent = eventsOnStream.pop().Event
+
+  		eventsOnStream.should.matchEvents(testEvents)
   		lastEvent.EventStreamId.should.equal('stream')
   		lastEvent.EventType.should.equal(client.systemEventTypes.streamDeleted)
   		done()
   	})
   })
             
-  afterEach(function(done) {
+  after(function(done) {
   	connection.close(function() {
 	  	es.on('exit', function(code, signal) {
 		  	done()
