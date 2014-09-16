@@ -35,9 +35,9 @@ MessageReceiver.prototype.processData = function(data) {
 }
 
 MessageReceiver.prototype._combineWithIncompletePacket = function(packet) {
-  var newPacket = new Buffer(incompletePacket.length + packet.length)
+  var newPacket = new Buffer(this._incompletePacket.length + packet.length)
   this._incompletePacket.copy(newPacket, 0)
-  packet.copy(newPacket, incompletePacket.length)
+  packet.copy(newPacket, this._incompletePacket.length)
   this._incompletePacket = null
   return newPacket
 }
