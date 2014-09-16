@@ -19,6 +19,8 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
 
 			es = memory
 			connection = client({ port: 5014 }, function(err) {
+				if(err) return done(err)
+					
 				var setData = {
 							expectedMetastreamVersion: client.expectedVersion.emptyStream
 						, metadata: client.createStreamMetadata({
