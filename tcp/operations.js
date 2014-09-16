@@ -296,13 +296,3 @@ function toResolvedEvent(payload) {
 	return resolvedEvent
 }
 
-function fromEventStoreEvent(rawEvent) {
-	var recordedEvent = rawEvent.event ? toRecordedEvent(rawEvent.event) : null
-		, recordedLink = rawEvent.link ? toRecordedEvent(rawEvent.link) : null
-	return {
-		Event: recordedEvent
-	, Link: recordedLink
-	, OriginalEvent: recordedLink || recordedEvent
-	}
-}
-
