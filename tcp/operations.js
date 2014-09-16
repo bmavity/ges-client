@@ -285,11 +285,24 @@ function toResolvedEvent(payload) {
 	var resolvedEvent = {}
 		, evt = !payload.event ? null : toRecordedEvent(payload.event)
 		, link = !payload.link ? null : toRecordedEvent(payload.link)
+		, hasPosition = !!payload.commitPosition || payload.commitPosition === 0
 	Object.defineProperties(resolvedEvent, {
 		Event: { value: evt, enumerable: true }
 	, IsResolved: { value: evt !== null && link !== null, enumerable: true }
 	, Link: { value: link, enumerable: true }
-	, OriginalPosition: { value: position(payload), enumerable: true }
+	, OriginalPosition: { value: hasPosition ? position(payload) : null, enumerable: true }
+	, OriginalEvent: { value: link || evt }
 	})
 	return resolvedEvent
 }
+
+function fromEventStoreEvent(rawEvent) {
+	var recordedEvent = rawEvent.event ? toRecordedEvent(rawEvent.event) : null
+		, recordedLink = rawEvent.link ? toRecordedEvent(rawEvent.link) : null
+	return {
+		Event: recordedEvent
+	, Link: recordedLink
+	, OriginalEvent: recordedLink || recordedEvent
+	}
+}
+
