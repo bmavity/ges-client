@@ -184,7 +184,7 @@ var operations = {
 		, toResponseObject: function(payload) {
 				return {
 					Status: payload.result
-				, Event: payload.result === 'Success' ? fromEventStoreEvent(payload.event) : null
+				, Event: payload.result === 'Success' ? toResolvedEvent(payload.event) : null
 				, Stream: operationData.stream
 				, EventNumber: operationData.data.eventNumber
 				}
@@ -212,7 +212,7 @@ var operations = {
 				var events = payload.events || []
 				return {
 					Status: payload.result
-				, Events: events.map(fromEventStoreEvent)
+				, Events: events.map(toResolvedEvent)
 				, NextEventNumber: payload.nextEventNumber
 				, LastEventNumber: payload.lastEventNumber
 				, IsEndOfStream: payload.isEndOfStream
@@ -241,7 +241,7 @@ var operations = {
 				var events = payload.events || []
 				return {
 					Status: payload.result
-				, Events: events.map(fromEventStoreEvent)
+				, Events: events.map(toResolvedEvent)
 				, NextEventNumber: payload.nextEventNumber
 				, LastEventNumber: payload.lastEventNumber
 				, IsEndOfStream: payload.isEndOfStream
@@ -260,16 +260,6 @@ function toEventStoreEvent(evt) {
 	, metadataContentType: evt.IsJson ? 1 : 0
 	, data: evt.Data
 	, metadata: evt.Metadata
-	}
-}
-
-function fromEventStoreEvent(rawEvent) {
-	var recordedEvent = rawEvent.event ? toRecordedEvent(rawEvent.event) : null
-		, recordedLink = rawEvent.link ? toRecordedEvent(rawEvent.link) : null
-	return {
-		Event: recordedEvent
-	, Link: recordedLink
-	, OriginalEvent: recordedLink || recordedEvent
 	}
 }
 
@@ -293,9 +283,12 @@ function toRecordedEvent(systemRecord) {
 
 function toResolvedEvent(payload) {
 	var resolvedEvent = {}
+		, evt = !payload.event ? null : toRecordedEvent(payload.event)
+		, link = !payload.link ? null : toRecordedEvent(payload.link)
 	Object.defineProperties(resolvedEvent, {
-		Event: { value: toRecordedEvent(payload.event), enumerable: true }
-	, Link: { value: !payload.link ? null : toRecordedEvent(payload.link), enumerable: true }
+		Event: { value: evt, enumerable: true }
+	, IsResolved: { value: evt !== null && link !== null, enumerable: true }
+	, Link: { value: link, enumerable: true }
 	, OriginalPosition: { value: position(payload), enumerable: true }
 	})
 	return resolvedEvent
