@@ -10,7 +10,7 @@ function Position(commitPosition, preparePosition) {
 		return new Position(commitPosition, preparePosition)
 	}
 
-	if(!preparePosition) {
+	if(!preparePosition && preparePosition !== 0) {
 		preparePosition = commitPosition.preparePosition
 		commitPosition = commitPosition.commitPosition
 	}

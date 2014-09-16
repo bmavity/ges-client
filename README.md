@@ -14,7 +14,7 @@ ges-client
   * <a href="#intro">Introduction</a>
   * <a href="#basic">Basic usage</a>
   * <a href="#status">Major Feature Status</a>
-  * <a href="#licence">Licence &amp; copyright</a>
+  * <a href="#license">Licence &amp; copyright</a>
   * <a href="#thanks">Special Thanks</a>
 
 <a name="intro"></a>
@@ -101,7 +101,7 @@ Major Feature Status
 * Append to stream (Partial - except for transactions)
 * Read from stream (Complete)
 * Subscriptions (Partial - live subscription to stream only)
-* Read from all (Partial - except for linktos)
+* Read from all (Complete)
 * Stream ACLs (Not Started)
 * Transations (Not Started)
 * Stream deletes (Complete)
