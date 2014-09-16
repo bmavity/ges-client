@@ -120,7 +120,6 @@ describe('read_allevents_backward_with_linkto_deleted_event', function() {
 						if(err) return done(err)
 
 						connection.deleteStream(deletedStreamName, { expectedVersion: client.expectedVersion.any }, function() {
-							console.log(arguments)
 							done()
 						})
 					})

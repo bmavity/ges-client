@@ -8,7 +8,7 @@ var client = require('../../../')
 	, should = require('../../shouldExtensions')
 
 
-describe('subscribe_should', function() {
+describe('appending_to_implicitly_created_stream_using_transaction', function() {
 	var es
 		, connection
 

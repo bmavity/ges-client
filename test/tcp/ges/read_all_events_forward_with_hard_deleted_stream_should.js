@@ -12,13 +12,14 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
 	var es
 		, connection
 		, testEvents = createTestEvent(range(0, 20))
+		, port = 6100
 
-	before(function(done) {
-		ges({ tcpPort: 5014 }, function(err, memory) {
+	beforeEach(function(done) {
+		ges({ tcpPort: port }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 5014 }, function(err) {
+			connection = client({ port: port }, function(err) {
 				if(err) return done(err)
 					
 				var setData = {
@@ -48,7 +49,11 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
 								, hardDelete: true
 								}
 
-						connection.deleteStream('stream', deleteData, done)
+						connection.deleteStream('stream', deleteData, function(err) {
+							if(err) return done(err)
+							port += 1
+							done()
+						})
 					})
 				})
 			})
@@ -77,7 +82,7 @@ describe('read_all_events_forward_with_hard_deleted_stream_should', function() {
   	})
   })
             
-  after(function(done) {
+  afterEach(function(done) {
   	connection.close(function() {
 	  	es.on('exit', function(code, signal) {
 		  	done()
