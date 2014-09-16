@@ -1,4 +1,5 @@
-var should = require('should')
+var client = require('../')
+	, should = require('should')
 	, dummy = {}
 
 module.exports = should
@@ -17,8 +18,8 @@ should.use(function(should, Assertion) {
   })
 
   Assertion.add('matchEvents', function(val, description) {
-    var actual = getArray(this.obj).map(normalizeEvent)
-    	, expected = getArray(val).map(normalizeEvent)
+    var actual = getFilteredArray(this.obj).map(normalizeEvent)
+    	, expected = getFilteredArray(val).map(normalizeEvent)
 
     this.params = { operator: 'to match events', expected: expected, showDiff: false, message: description }
 
@@ -26,8 +27,8 @@ should.use(function(should, Assertion) {
   })
 
   Assertion.add('matchEventIdsWith', function(val, description) {
-    var actual = getArray(this.obj).map(getEventId)
-    	, expected = getArray(val).map(getEventId)
+    var actual = getFilteredArray(this.obj).map(getEventId)
+    	, expected = getFilteredArray(val).map(getEventId)
 
     this.params = { operator: 'to match event ids with', expected: expected, showDiff: false, message: description }
 
@@ -35,8 +36,8 @@ should.use(function(should, Assertion) {
   })
 
   Assertion.add('matchEventNumbersWith', function(val, description) {
-    var actual = getArray(this.obj).map(getEventNumber)
-    	, expected = getArray(val).map(getEventNumber)
+    var actual = getFilteredArray(this.obj).map(getEventNumber)
+    	, expected = getFilteredArray(val).map(getEventNumber)
 
     this.params = { operator: 'to match event numbers with', expected: expected, showDiff: false, message: description }
 
@@ -73,12 +74,21 @@ function getArray(obj) {
 	return Array.isArray(obj) ? obj : [ obj ]
 }
 
+function getFilteredArray(obj) {
+	return getArray(obj).filter(isNotFromSystemStream)
+}
+
 function getEventId(evt) {
 	return evt.EventId || evt.OriginalEvent.EventId
 }
 
 function getEventNumber(evt) {
 	return evt.OriginalEvent.EventNumber
+}
+
+function isNotFromSystemStream(evt) {
+	if(!evt.Event) return true
+	return !client.systemStreams.isSystemStream(evt.Event.EventStreamId)
 }
 
 function normalizeEvent(evt) {
