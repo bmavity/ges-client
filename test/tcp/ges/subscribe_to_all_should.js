@@ -39,20 +39,23 @@ describe('subscribe_to_all_should', function() {
 	})
 
   it('allow_multiple_subscriptions', function(done) {
-    var stream = 'subscribe_to_all_should_allow_multiple_subscriptions'
-    	, sub1 = connection.subscribeToStream(stream)
-    	, sub2 = connection.subscribeToStream(stream)
+  	var stream = 'subscribe_to_all_should_allow_multiple_subscriptions'
+    	, sub1 = connection.subscribeToAll()
+    	, sub2 = connection.subscribeToAll()
  	    , appendData = {
 					expectedVersion: client.expectedVersion.emptyStream
 				, events: createTestEvent()
 		    } 
     	, evtSub1
     	, evtSub2
+    	, hasFinished
+    	, hasErr
 
     function testForFinish() {
-    	if(evtSub1 && evtSub2) {
-	    	true.should.be.true
-	    	done()
+    	if(evtSub1 && evtSub2 && !hasFinished && !hasErr) {
+    		hasFinished = true
+    		should.pass()
+    		done()
     	}
     }
 
@@ -67,13 +70,16 @@ describe('subscribe_to_all_should', function() {
     })
 
     connection.appendToStream(stream, appendData, function(err) {
-    	if(err) return done(err)
+    	if(err) {
+    		hasErr = true
+    		done(err)
+    	}
     })
   })
 
   it('catch_deleted_events_as_well', function(done) {
     var stream = 'subscribe_to_all_should_catch_created_and_deleted_events_as_well'
-    	, subscription = connection.subscribeToStream(stream)
+    	, subscription = connection.subscribeToAll()
     	, callResults = {}
 
     subscription.on('event', function(evt) {

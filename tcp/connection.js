@@ -242,6 +242,25 @@ EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData
 	})
 }
 
+EsTcpConnection.prototype.subscribeToAll = function(subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
+	var subscription = createSubscription()
+
+	this._handler.enqueueMessage({
+		name: 'StartSubscription'
+	, data: {
+			name: 'SubscribeToStream'
+		, auth: subscriptionData.auth
+		, data: subscriptionData
+		, subscription: subscription
+		}
+	})
+
+	return subscription
+}
+
+
 EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
 	subscriptionData = subscriptionData || {}
 
