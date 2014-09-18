@@ -1,6 +1,7 @@
 var uuid = require('node-uuid')
 	, messageParser = require('./messageParser')
 	, position = require('./position')
+	, eventPayloads = require('./eventPayloads')
 
 module.exports = function(operationData) {
 	var operation = operations[operationData.name]
@@ -61,7 +62,7 @@ var operations = {
 				return messageParser.serialize('WriteEvents', {
 					eventStreamId: operationData.stream
 				, expectedVersion: payload.expectedVersion
-				, events: events.map(toEventStoreEvent)
+				, events: events.map(eventPayloads.toEventStoreEvent)
 				, requireMaster: !!payload.requireMaster
 				})
 			}
@@ -122,7 +123,7 @@ var operations = {
 				var events = payload.events || []
 				return {
 					Status: payload.result
-				, Events: events.map(toResolvedEvent)
+				, Events: events.map(eventPayloads.toResolvedEvent)
 				, IsEndOfStream: events.length === 0
 				, OriginalPosition: position(payload)
 				, NextPosition: position({
@@ -154,7 +155,7 @@ var operations = {
 				var events = payload.events || []
 				return {
 					Status: payload.result
-				, Events: events.map(toResolvedEvent)
+				, Events: events.map(eventPayloads.toResolvedEvent)
 				, IsEndOfStream: events.length === 0
 				, OriginalPosition: position(payload)
 				, NextPosition: position({
@@ -184,7 +185,7 @@ var operations = {
 		, toResponseObject: function(payload) {
 				return {
 					Status: payload.result
-				, Event: payload.result === 'Success' ? toResolvedEvent(payload.event) : null
+				, Event: payload.result === 'Success' ? eventPayloads.toResolvedEvent(payload.event) : null
 				, Stream: operationData.stream
 				, EventNumber: operationData.data.eventNumber
 				}
@@ -212,7 +213,7 @@ var operations = {
 				var events = payload.events || []
 				return {
 					Status: payload.result
-				, Events: events.map(toResolvedEvent)
+				, Events: events.map(eventPayloads.toResolvedEvent)
 				, NextEventNumber: payload.nextEventNumber
 				, LastEventNumber: payload.lastEventNumber
 				, IsEndOfStream: payload.isEndOfStream
@@ -241,7 +242,7 @@ var operations = {
 				var events = payload.events || []
 				return {
 					Status: payload.result
-				, Events: events.map(toResolvedEvent)
+				, Events: events.map(eventPayloads.toResolvedEvent)
 				, NextEventNumber: payload.nextEventNumber
 				, LastEventNumber: payload.lastEventNumber
 				, IsEndOfStream: payload.isEndOfStream
@@ -250,49 +251,3 @@ var operations = {
 		}
 	}
 }
-
-
-function toEventStoreEvent(evt) {
-	return {
-		eventId: uuid.parse(evt.EventId, new Buffer(16))
-	, eventType: evt.Type
-	, dataContentType: evt.IsJson ? 1 : 0
-	, metadataContentType: evt.IsJson ? 1 : 0
-	, data: evt.Data
-	, metadata: evt.Metadata
-	}
-}
-
-function toRecordedEvent(systemRecord) {
-	var recordedEvent = {}
-		, metadata = systemRecord.hasOwnProperty('metadata') || systemRecord.metadata !== null ? systemRecord.metadata : new Buffer(0)
-		, data = systemRecord.data === null ? new Buffer(0) : systemRecord.data
-	Object.defineProperties(recordedEvent, {
-		EventStreamId: { value: systemRecord.eventStreamId, enumerable: true }
-  , EventId: { value: uuid.unparse(systemRecord.eventId), enumerable: true }
-  , EventNumber: { value: systemRecord.eventNumber, enumerable: true }
-  , EventType: { value: systemRecord.eventType, enumerable: true }
-  , Data: { value: data, enumerable: true }
-  , Metadata: { value: metadata, enumerable: true }  
-  , IsJson: { value: systemRecord.dataContentType === 1, enumerable: true }
-  , Created: { value: systemRecord.created, enumerable: true }
-  , CreatedEpoch: { value: systemRecord.createdEpoch, enumerable: true }
-	})
-	return recordedEvent
-}
-
-function toResolvedEvent(payload) {
-	var resolvedEvent = {}
-		, evt = !payload.event ? null : toRecordedEvent(payload.event)
-		, link = !payload.link ? null : toRecordedEvent(payload.link)
-		, hasPosition = !!payload.commitPosition || payload.commitPosition === 0
-	Object.defineProperties(resolvedEvent, {
-		Event: { value: evt, enumerable: true }
-	, IsResolved: { value: evt !== null && link !== null, enumerable: true }
-	, Link: { value: link, enumerable: true }
-	, OriginalPosition: { value: hasPosition ? position(payload) : null, enumerable: true }
-	, OriginalEvent: { value: link || evt }
-	})
-	return resolvedEvent
-}
-
