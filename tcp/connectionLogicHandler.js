@@ -119,7 +119,7 @@ function handlePackage(message) {
 		})
 		return
 	}
-
+	
 	var operation = this._operations.getActiveOperation(correlationId)
 	if(operation) {
 		operation.finish(message.package)
