@@ -3,6 +3,7 @@ var util = require('util')
 	, EventEmitter = require('events').EventEmitter
 	, connectionLogicHandler = require('./connectionLogicHandler')
 	, createSubscription = require('./subscription')
+	, createCatchUpSubscription = require('./catchUpSubscription')
 	, systemStreams = require('./systemStreams')
 	, eventData = require('../eventData')
 	, eventNumber = require('./eventNumber')
@@ -260,7 +261,6 @@ EsTcpConnection.prototype.subscribeToAll = function(subscriptionData) {
 	return subscription
 }
 
-
 EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
 	subscriptionData = subscriptionData || {}
 
@@ -280,3 +280,10 @@ EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData)
 	return subscription
 }
 
+EsTcpConnection.prototype.subscribeToStreamFrom = function(stream, subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
+	var subscription = createCatchUpSubscription(this, stream, subscriptionData)
+	subscription.start()
+	return subscription
+}
