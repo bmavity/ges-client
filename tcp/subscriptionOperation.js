@@ -1,6 +1,8 @@
 var util = require('util')
 	, EventEmitter = require('events').EventEmitter
 	, parser = require('./messageParser')
+	, eventPayloads = require('./eventPayloads')
+	, position = require('./position')
 
 module.exports = SubscriptionOperation
 
@@ -26,12 +28,16 @@ function SubscriptionOperation(correlationId, subscriptionData, connection) {
 }
 util.inherits(SubscriptionOperation, EventEmitter)
 
-SubscriptionOperation.prototype.dropped = function() {
-	this._subscription.emit('dropped')
-}
+SubscriptionOperation.prototype.finish = function(message) {
+	var handler = responseHandlers[message.messageName]
+	try {
+		var payload = parser.parse(handler.responseType, message.payload)
+	}
+	catch(ex) {
+		this._subscription.emit('error', ex)
+	}
 
-SubscriptionOperation.prototype.eventAppeared = function(evt) {
-	this._subscription.emit('event', evt)
+	handler.processResponse(payload, this._subscription)
 }
 
 SubscriptionOperation.prototype.toTcpMessage = function() {
@@ -45,5 +51,29 @@ SubscriptionOperation.prototype.toTcpMessage = function() {
 	, correlationId: this._correlationId
 	, payload: payload
 	, auth: this._data.auth
+	}
+}
+
+var responseHandlers = {
+  'SubscriptionConfirmation': {
+  	responseType: 'SubscriptionConfirmation'
+  , processResponse: function(payload, subscription) {
+			subscription.emit('confirmed', position(payload))
+	  }
+	}
+, 'StreamEventAppeared': {
+  	responseType: 'StreamEventAppeared'
+  , processResponse: function(payload, subscription) {
+			subscription.emit('event', eventPayloads.toResolvedEvent(payload.event))
+	  }
+	}
+, 'SubscriptionDropped': {
+  	responseType: 'SubscriptionDropped'
+  , processResponse: function(payload, subscription) {
+  		subscription.emit('dropped', {
+  			reason: payload.reason
+  		, error: null
+  		})
+	  }
 	}
 }
