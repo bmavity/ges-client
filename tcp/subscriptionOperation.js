@@ -58,7 +58,10 @@ var responseHandlers = {
   'SubscriptionConfirmation': {
   	responseType: 'SubscriptionConfirmation'
   , processResponse: function(payload, subscription) {
-			subscription.emit('confirmed', position(payload))
+			subscription.emit('confirmed', {
+				lastCommitPosition: payload.lastCommitPosition
+			, lastEventNumber: payload.lastEventNumber
+			})
 	  }
 	}
 , 'StreamEventAppeared': {
