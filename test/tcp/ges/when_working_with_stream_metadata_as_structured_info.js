@@ -12,11 +12,11 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5004 }, function(err, memory) {
+		ges({ tcpPort: 5028 }, function(err, memory) {
 			if(err) return done(err)
 
 			es = memory
-			connection = client({ port: 5004 }, done)
+			connection = client({ port: 5028 }, done)
 		})
 	})
 
