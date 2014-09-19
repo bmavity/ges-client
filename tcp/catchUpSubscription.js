@@ -15,12 +15,13 @@ function EsCatchUpSubscription(connection, stream, subscriptionData) {
 	this._stream = stream
 	this._subscriptionData = subscriptionData
 	this._liveSub = null
-	this._lastProcessedEventNumber = -1
 	this._nextReadEventNumber = 0
 	this._isDropped = false
 	this._shouldStop = false
 	this._liveQueue = []
 	this._allowProcessing = false
+
+	this.lastProcessedEventNumber = subscriptionData.startProcessingAfter || -1
 }
 util.inherits(EsCatchUpSubscription, EventEmitter)
 
@@ -93,9 +94,9 @@ EsCatchUpSubscription.prototype._beginLive = function() {
 EsCatchUpSubscription.prototype._tryProcess = function(evt) {
 	var me = this
 	setImmediate(function() {
-		if(evt.OriginalEventNumber > me._lastProcessedEventNumber) {
+		if(evt.OriginalEventNumber > me.lastProcessedEventNumber) {
 			me.emit('event', evt)
-			me._lastProcessedEventNumber = evt.OriginalEventNumber
+			me.lastProcessedEventNumber = evt.OriginalEventNumber
 		}
 	})
 }

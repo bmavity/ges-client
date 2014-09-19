@@ -176,14 +176,95 @@ describe('subscribe_to_stream_catching_up_should', function() {
 	    	done()
 	    }).on('error', done)
 
-	   	async.series(range(10, 10).map(appendEvent), done)
+	   	async.series(range(10, 10).map(appendEvent), function(err) {
+	   		if(err) return done(err)
+	   	})
     })
   })
 
-  it('filter_events_and_keep_listening_to_new_ones')
-    //var stream = 'filter_events_and_keep_listening_to_new_ones'
-  it('filter_events_and_work_if_nothing_was_written_after_subscription')
-    //var stream = 'filter_events_and_work_if_nothing_was_written_after_subscription'
+  it('filter_events_and_keep_listening_to_new_ones', function(done) {
+    var stream = 'filter_events_and_keep_listening_to_new_ones'
+    	, subscribedEvents = []
+
+    function appendEvent(eventNumber) {
+    	return function(cb) {
+	    	var appendData = {
+			    		expectedVersion: eventNumber - 1
+			    	, events: client.createEventData(uuid.v4(), 'et-' + eventNumber, false, new Buffer(3))
+			    	}
+			  connection.appendToStream(stream, appendData, cb)
+    	}
+    }
+
+    async.series(range(0, 20).map(appendEvent) , function(err) {
+    	if(err) return done(err)
+
+	    var subData = {
+	    			startProcessingAfter: 9
+	    		}
+	    	, subscription = connection.subscribeToStreamFrom(stream, subData)
+
+	    subscription.on('event', function(evt) {
+	    	subscribedEvents.push(evt)
+	    	if(subscribedEvents.length >= 20) {
+			    subscription.stop()
+	    	}
+	    }).on('dropped', function() {
+	    	subscribedEvents.map(function(evt) {
+	    		return evt.OriginalEvent.EventType
+	    	}).should.eql(range(10, 20).map(function(num) {
+	    		return 'et-' + num
+	    	}))
+	    	var lastEvent = subscribedEvents.concat([]).pop()
+	    	lastEvent.OriginalEventNumber.should.equal(subscription.lastProcessedEventNumber)
+	    	done()
+	    }).on('error', done)
+
+	   	async.series(range(20, 10).map(appendEvent), function(err) {
+	   		if(err) return done(err)
+	   	})
+    })
+  })
+
+  it('filter_events_and_work_if_nothing_was_written_after_subscription', function(done) {
+    var stream = 'filter_events_and_work_if_nothing_was_written_after_subscription'
+    	, subscribedEvents = []
+
+    function appendEvent(eventNumber) {
+    	return function(cb) {
+	    	var appendData = {
+			    		expectedVersion: eventNumber - 1
+			    	, events: client.createEventData(uuid.v4(), 'et-' + eventNumber, false, new Buffer(3))
+			    	}
+			  connection.appendToStream(stream, appendData, cb)
+    	}
+    }
+
+    async.series(range(0, 20).map(appendEvent) , function(err) {
+    	if(err) return done(err)
+
+	    var subData = {
+	    			startProcessingAfter: 9
+	    		}
+	    	, subscription = connection.subscribeToStreamFrom(stream, subData)
+
+	    subscription.on('event', function(evt) {
+	    	subscribedEvents.push(evt)
+	    	if(subscribedEvents.length >= 10) {
+			    subscription.stop()
+	    	}
+	    }).on('dropped', function() {
+	    	subscribedEvents.map(function(evt) {
+	    		return evt.OriginalEvent.EventType
+	    	}).should.eql(range(10, 10).map(function(num) {
+	    		return 'et-' + num
+	    	}))
+	    	var lastEvent = subscribedEvents.concat([]).pop()
+	    	lastEvent.OriginalEventNumber.should.equal(subscription.lastProcessedEventNumber)
+	    	done()
+	    }).on('error', done)
+    })
+  })
 
   after(function(done) {
   	connection.close(function() {
