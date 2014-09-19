@@ -41,12 +41,15 @@ function toResolvedEvent(payload) {
 		, evt = !payload.event ? null : toRecordedEvent(payload.event)
 		, link = !payload.link ? null : toRecordedEvent(payload.link)
 		, hasPosition = !!payload.commitPosition || payload.commitPosition === 0
+		, originalEvent = link || evt
 	Object.defineProperties(resolvedEvent, {
 		Event: { value: evt, enumerable: true }
 	, IsResolved: { value: evt !== null && link !== null, enumerable: true }
 	, Link: { value: link, enumerable: true }
+	, OriginalEvent: { value: originalEvent, enumerable: true }
+	, OriginalEventNumber: { value: !originalEvent ? null : originalEvent.EventNumber, enumerable: true }
 	, OriginalPosition: { value: hasPosition ? position(payload) : null, enumerable: true }
-	, OriginalEvent: { value: link || evt }
+	, OriginalStreamId: { value: !originalEvent ? null : originalEvent.EventStreamId, enumerable: true }
 	})
 	return resolvedEvent
 }

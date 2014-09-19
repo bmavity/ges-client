@@ -1,4 +1,5 @@
 var client = require('../../../')
+	, async = require('async')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
@@ -33,12 +34,13 @@ describe('subscribe_to_stream_catching_up_should', function() {
     	.on('error', indicateError)
 
     subscription.on('dropped', function() {
-    	console.log('in dropped')
     	hasError.should.be.false
     	done()
     }).on('error', indicateError)
 
-    subscription.stop()
+    subscription.on('live', function() {
+	    subscription.stop()
+    })
   })
 
   it('be_able_to_subscribe_to_non_existing_stream_and_then_catch_event', function(done) {
@@ -49,9 +51,19 @@ describe('subscribe_to_stream_catching_up_should', function() {
 				, events: createTestEvent()
 		    } 
 		  , eventCount = 0
+		  , status = {}
+
+		function checkStatus() {
+			if(status.live && status.appended) {
+	    	subscription.stop()
+			}
+		}
 
     subscription.on('event', function(evt) {
     	eventCount += 1
+    }).on('live', function() {
+    	status.live = true
+    	checkStatus()
     }).on('dropped', function() {
     	eventCount.should.equal(1)
     	done()
@@ -59,7 +71,8 @@ describe('subscribe_to_stream_catching_up_should', function() {
 
     connection.appendToStream(stream, appendData, function(err) {
     	if(err) return done(err)
-    	subscription.stop()
+    	status.appended = true
+    	checkStatus()
     })
   })
 
@@ -73,7 +86,15 @@ describe('subscribe_to_stream_catching_up_should', function() {
 		    } 
     	, evt1Count = 0
     	, evt2Count = 0
+    	, status = {}
     	, dropped = {}
+
+    function checkStatus() {
+			if(status.sub1 && status.sub2 && status.appended) {
+	    	sub1.stop()
+	    	sub2.stop()
+			}
+		}
 
     function testForFinish() {
     	if(dropped.sub1 && dropped.sub2) {
@@ -88,6 +109,9 @@ describe('subscribe_to_stream_catching_up_should', function() {
     }).on('dropped', function() {
     	dropped.sub1 = true
     	testForFinish()
+    }).on('live', function() {
+    	status.sub1 = true
+    	checkStatus()
     }).on('error', done)
 
     sub2.on('event', function(evt) {
@@ -95,13 +119,15 @@ describe('subscribe_to_stream_catching_up_should', function() {
     }).on('dropped', function() {
     	dropped.sub2 = true
     	testForFinish()
+    }).on('live', function() {
+    	status.sub2 = true
+    	checkStatus()
     }).on('error', done)
 
     connection.appendToStream(stream, appendData, function(err) {
     	if(err) return done(err)
-
-    	sub1.stop()
-    	sub2.stop()
+    	status.appended = true
+    	setTimeout(checkStatus, 2000)
     })
   })
 
@@ -117,8 +143,43 @@ describe('subscribe_to_stream_catching_up_should', function() {
     subscription.stop()
   })
 
-  it('read_all_existing_events_and_keep_listening_to_new_ones')
-    //var stream = 'read_all_existing_events_and_keep_listening_to_new_ones'
+  it('read_all_existing_events_and_keep_listening_to_new_ones', function(done) {
+    var stream = 'read_all_existing_events_and_keep_listening_to_new_ones'
+    	, subscribedEvents = []
+
+    function appendEvent(eventNumber) {
+    	return function(cb) {
+	    	var appendData = {
+			    		expectedVersion: eventNumber - 1
+			    	, events: client.createEventData(uuid.v4(), 'et-' + eventNumber, false, new Buffer(3))
+			    	}
+			  connection.appendToStream(stream, appendData, cb)
+    	}
+    }
+
+    async.series(range(0, 10).map(appendEvent) , function(err) {
+    	if(err) return done(err)
+
+	    var subscription = connection.subscribeToStreamFrom(stream)
+
+	    subscription.on('event', function(evt) {
+	    	subscribedEvents.push(evt)
+	    	if(subscribedEvents.length >= 20) {
+			    subscription.stop()
+	    	}
+	    }).on('dropped', function() {
+	    	subscribedEvents.map(function(evt) {
+	    		return evt.OriginalEvent.EventType
+	    	}).should.eql(range(0, 20).map(function(num) {
+	    		return 'et-' + num
+	    	}))
+	    	done()
+	    }).on('error', done)
+
+	   	async.series(range(10, 10).map(appendEvent), done)
+    })
+  })
+
   it('filter_events_and_keep_listening_to_new_ones')
     //var stream = 'filter_events_and_keep_listening_to_new_ones'
   it('filter_events_and_work_if_nothing_was_written_after_subscription')
