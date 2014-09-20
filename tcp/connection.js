@@ -261,6 +261,14 @@ EsTcpConnection.prototype.subscribeToAll = function(subscriptionData) {
 	return subscription
 }
 
+EsTcpConnection.prototype.subscribeToAllFrom = function(subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
+	var subscription = createCatchUpSubscription(this, subscriptionData)
+	subscription.start()
+	return subscription
+}
+
 EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
 	subscriptionData = subscriptionData || {}
 
