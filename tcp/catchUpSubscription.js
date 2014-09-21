@@ -253,6 +253,8 @@ EsAllCatchUpSubscription.prototype._tryProcess = function(evt) {
 	setImmediate(function() {
 		if(evt.OriginalPosition.compare(me.lastProcessedPosition) === 1) {
 			me.emit('event', evt)
+			//console.log('setting last position')
+			//console.log(evt.OriginalPosition.commitPosition)
 			me.lastProcessedPosition = evt.OriginalPosition
 		}
 	})
