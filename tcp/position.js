@@ -22,3 +22,15 @@ function Position(commitPosition, preparePosition) {
 	, PreparePosition: { value: preparePosition, enumerable: true }
 	})
 }
+
+Position.prototype.compare = function(other) {
+	var thisCommit = parseInt(this.commitPosition, 10)
+		, otherCommit = parseInt(other.commitPosition, 10)
+		, thisPrepare = parseInt(this.preparePosition, 10)
+		, otherPrepare = parseInt(other.preparePosition, 10)
+	if(thisCommit > otherCommit) return 1
+	if(thisCommit < otherCommit) return -1
+	if(thisPrepare > otherPrepare) return 1
+	if(thisPrepare < otherPrepare) return -1
+	return 0
+}

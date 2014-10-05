@@ -3,6 +3,7 @@ var util = require('util')
 	, EventEmitter = require('events').EventEmitter
 	, connectionLogicHandler = require('./connectionLogicHandler')
 	, createSubscription = require('./subscription')
+	, createCatchUpSubscription = require('./catchUpSubscription')
 	, systemStreams = require('./systemStreams')
 	, eventData = require('../eventData')
 	, eventNumber = require('./eventNumber')
@@ -242,6 +243,32 @@ EsTcpConnection.prototype.getStreamMetadataAsRawBytes = function(stream, getData
 	})
 }
 
+EsTcpConnection.prototype.subscribeToAll = function(subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
+	var subscription = createSubscription()
+
+	this._handler.enqueueMessage({
+		name: 'StartSubscription'
+	, data: {
+			name: 'SubscribeToStream'
+		, auth: subscriptionData.auth
+		, data: subscriptionData
+		, subscription: subscription
+		}
+	})
+
+	return subscription
+}
+
+EsTcpConnection.prototype.subscribeToAllFrom = function(subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
+	var subscription = createCatchUpSubscription(this, subscriptionData)
+	subscription.start()
+	return subscription
+}
+
 EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData) {
 	subscriptionData = subscriptionData || {}
 
@@ -261,3 +288,10 @@ EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData)
 	return subscription
 }
 
+EsTcpConnection.prototype.subscribeToStreamFrom = function(stream, subscriptionData) {
+	subscriptionData = subscriptionData || {}
+
+	var subscription = createCatchUpSubscription(this, stream, subscriptionData)
+	subscription.start()
+	return subscription
+}

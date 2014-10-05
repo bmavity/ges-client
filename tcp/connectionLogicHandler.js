@@ -119,7 +119,7 @@ function handlePackage(message) {
 		})
 		return
 	}
-
+	
 	var operation = this._operations.getActiveOperation(correlationId)
 	if(operation) {
 		operation.finish(message.package)
@@ -128,8 +128,7 @@ function handlePackage(message) {
 
 	var subscription = this._subscriptions.getActiveSubscription(correlationId)
 	if(subscription) {
-		var handler = commandHandlers[messageName]
-		handler(message.package, subscription)
+		subscription.finish(message.package)
 		return
 	}
 }
@@ -247,44 +246,3 @@ EsConnectionLogicHandler.prototype._processNextMessage = function() {
 EsConnectionLogicHandler.prototype._setState = function(stateName) {
 	this._state = states[stateName]
 }
-
-
-
-
-
-var uuid = require('node-uuid')
-	, parser = require('./messageParser')
-	, commandHandlers = {
-			
-		 'ReadAllEventsForwardCompleted': function(correlationId, payload, cb) {
-				var a = parser.parse('ReadAllEventsCompleted', payload)
-		  		, events = a.events
-				  		.filter(isClientEvent)
-				  		.map(parseEventStoreEvent)
-				cb(null, events)
-			}
-
-    , 'SubscriptionConfirmation': function(message, subscription) {
-				payload = parser.parse('SubscriptionConfirmation', message.payload)
-				//console.log('SubscriptionConfirmation', correlationId, payload)
-			}
-    , 'StreamEventAppeared': function(message, subscription) {
-				payload = parser.parse('StreamEventAppeared', message.payload)
-
-				//console.log('StreamEventAppeared', correlationId, payload)
-				subscription.eventAppeared(payload)
-			}
-    , 'SubscriptionDropped': function(message, subscription) {
-				payload = parser.parse('SubscriptionDropped', message.payload)
-				//console.log('SubscriptionDropped', correlationId, payload)
-				subscription.dropped()
-			}
-		, 'BadRequest': function(correlationId, payload, cb) {
-				cb(new Error(payload.toString()))
-			}
-		, 'NotHandled': function(correlationId, payload, cb) {
-				payload = parser.parse('NotHandled', payload)
-				cb(new Error(payload.reason))
-			}
-		}
-
