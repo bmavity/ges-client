@@ -1,10 +1,12 @@
 var client = require('../../../')
 	, ges = require('ges-test-helper')
 	, uuid = require('node-uuid')
+	, async = require('async')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
+	, should = require('../../shouldExtensions')
 
 describe('transaction', function() {
 	var es
@@ -19,8 +21,28 @@ describe('transaction', function() {
 		})
 	})
 
-  it('should_start_on_non_existing_stream_with_correct_exp_ver_and_create_stream_on_commit')
-    //var stream = 'should_start_on_non_existing_stream_with_correct_exp_ver_and_create_stream_on_commit'
+  it('should_start_on_non_existing_stream_with_correct_exp_ver_and_create_stream_on_commit', function(done) {
+    var stream = 'should_start_on_non_existing_stream_with_correct_exp_ver_and_create_stream_on_commit'
+    	, transactionOptions = {
+    			expectedVersion: client.expectedVersion.noStream
+	    	}
+
+    connection.startTransaction(stream, transactionOptions, function(err, transaction) {
+    	if(err) return done(err)
+
+    	transaction.write(createTestEvent(), function(err) {
+    		if(err) return done(err)
+
+    		transaction.commit(function(err, commitResult) {
+    			if(err) return done(err)
+
+    			commitResult.NextExpectedVersion.should.equal(0)
+    			done()
+    		})
+    	})
+    })
+  })
+
   it('should_start_on_non_existing_stream_with_exp_ver_any_and_create_stream_on_commit')
     //var stream = 'should_start_on_non_existing_stream_with_exp_ver_any_and_create_stream_on_commit'
   it('should_fail_to_commit_non_existing_stream_with_wrong_exp_ver')

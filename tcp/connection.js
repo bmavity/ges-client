@@ -10,6 +10,7 @@ var util = require('util')
 	, systemEventTypes = require('./systemEventTypes')
 	, streamMetadata = require('./streamMetadata')
 	, streamMetadataResult = require('./streamMetadataResult')
+	, transaction = require('./transaction')
 
 module.exports = createConnection
 
@@ -67,6 +68,40 @@ EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
 	, stream: stream
 	, auth: appendData.auth
 	, data: appendData
+	, cb: cb
+	})
+}
+
+EsTcpConnection.prototype.startTransaction = function(stream, transactionData, cb) {
+	var auth = transactionData.auth
+		, me = this
+	this.enqueueOperation({
+		name: 'StartTransaction'
+	, stream: stream
+	, auth: auth
+	, data: transactionData
+	, cb: function(err, result) {
+			if(err) return cb(err)
+
+			cb(null, transaction(result.TransactionId, auth, me))
+		}
+	})
+}
+
+EsTcpConnection.prototype.transactionalWrite = function(writeData, cb) {
+	this.enqueueOperation({
+		name: 'TransactionalWrite'
+	, auth: writeData.auth
+	, data: writeData
+	, cb: cb
+	})
+}
+
+EsTcpConnection.prototype.commitTransaction = function(commitData, cb) {
+	this.enqueueOperation({
+		name: 'CommitTransaction'
+	, auth: commitData.auth
+	, data: commitData
 	, cb: cb
 	})
 }
