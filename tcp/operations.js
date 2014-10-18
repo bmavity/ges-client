@@ -39,7 +39,7 @@ function OperationItem(operation) {
 		}
 
 		//TODO: Investigate further if this is needed
-		var errorIfDeleted = ['WriteEvents', 'DeleteStream']
+		var errorIfDeleted = ['WriteEvents', 'DeleteStream', 'TransactionCommit']
 		if(payload.result === 'StreamDeleted' && errorIfDeleted.indexOf(operation.requestType) !== -1) {
 			return cb(new Error(payload.message))
 		}
