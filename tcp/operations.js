@@ -22,6 +22,10 @@ function OperationItem(operation) {
 	this.finish = function(message) {
 		var cb = operation.cb
 			, payload
+
+		if(message.messageName === 'BadRequest') {
+			return cb(new Error('Bad Request - ' + message.payload.toString()))
+		}
 			
 		try {
 			payload = messageParser.parse(operation.responseType, message.payload)
@@ -35,7 +39,7 @@ function OperationItem(operation) {
 		}
 
 		//TODO: Investigate further if this is needed
-		var errorIfDeleted = ['WriteEvents', 'DeleteStream']
+		var errorIfDeleted = ['WriteEvents', 'DeleteStream', 'TransactionCommit']
 		if(payload.result === 'StreamDeleted' && errorIfDeleted.indexOf(operation.requestType) !== -1) {
 			return cb(new Error(payload.message))
 		}
@@ -246,6 +250,80 @@ var operations = {
 				, NextEventNumber: payload.nextEventNumber
 				, LastEventNumber: payload.lastEventNumber
 				, IsEndOfStream: payload.isEndOfStream
+				}
+			}
+		}
+	}
+, StartTransaction: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'TransactionStart'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('TransactionStart', {
+					eventStreamId: operationData.stream
+				, expectedVersion: payload.expectedVersion
+				, requireMaster: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'TransactionStartCompleted'
+		, toResponseObject: function(payload) {
+				return {
+					Result: payload.result
+				, TransactionId: payload.transactionId
+				, Message: payload.message
+				}
+			}
+		}
+	}
+, TransactionalWrite: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'TransactionWrite'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+					, events = !payload.events ? [] : Array.isArray(payload.events) ? payload.events : [ payload.events ]
+				return messageParser.serialize('TransactionWrite', {
+					transactionId: payload.transactionId
+				, events: events.map(eventPayloads.toEventStoreEvent)
+				, requireMaster: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'TransactionWriteCompleted'
+		, toResponseObject: function(payload) {
+				return {
+					Result: payload.result
+				, TransactionId: payload.transactionId
+				, Message: payload.message
+				}
+			}
+		}
+	}
+, CommitTransaction: function(operationData) {
+		return {
+			auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'TransactionCommit'
+		, toRequestPayload: function(payload) {
+				var payload = operationData.data
+
+				return messageParser.serialize('TransactionCommit', {
+					transactionId: payload.transactionId
+				, requireMaster: !!payload.requireMaster
+		  	})
+	  	}
+		, responseType: 'TransactionCommitCompleted'
+		, toResponseObject: function(payload) {
+				return {
+					Result: payload.result
+				, TransactionId: payload.transactionId
+				, Message: payload.message
+				, FirstEventNumber: payload.firstEventNumber
+				, NextExpectedVersion: payload.lastEventNumber
+				, LogPosition: position(payload)
 				}
 			}
 		}
