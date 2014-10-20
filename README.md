@@ -98,12 +98,12 @@ Major Feature Status
 -------------------
 
 * Connection (Partial - not all events are available)
-* Append to stream (Partial - except for transactions)
+* Append to stream (Complete)
 * Read from stream (Complete)
-* Subscriptions (Partial - live subscription to stream only)
+* Subscriptions (Complete)
 * Read from all (Complete)
 * Stream ACLs (Not Started)
-* Transations (Not Started)
+* Transactions (Complete)
 * Stream deletes (Complete)
 * Stream metadata (Complete)
 
