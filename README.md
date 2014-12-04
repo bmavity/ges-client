@@ -1,5 +1,6 @@
 ges-client
 =======
+[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/bmavity/ges-client?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 **A nodejs client library for [(Get) Event Store](http://geteventstore.com)**
 
