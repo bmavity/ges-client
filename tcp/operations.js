@@ -3,13 +3,15 @@ var uuid = require('node-uuid')
 	, position = require('./position')
 	, eventPayloads = require('./eventPayloads')
 
-module.exports = function(operationData) {
+module.exports = function(operationData, operationsManager) {
 	var operation = operations[operationData.name]
-	return new OperationItem(operation(operationData))
+	return new OperationItem(operation(operationData), operationsManager)
 }
 
 
-function OperationItem(operation) {
+function OperationItem(operation, operationsManager) {
+	this._manager = operationsManager
+
 	this.toTcpMessage = function(correlationId) {
 		return {
 			messageName: operation.requestType
@@ -22,6 +24,8 @@ function OperationItem(operation) {
 	this.finish = function(message) {
 		var cb = operation.cb
 			, payload
+
+		this._manager.completeActiveOperation(message.correlationId)
 
 		if(message.messageName === 'BadRequest') {
 			return cb(new Error('Bad Request - ' + message.payload.toString()))
