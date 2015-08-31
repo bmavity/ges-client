@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -13,13 +13,14 @@ describe('subscribe_to_all_should', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5023 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5023 }, function(err) {
+			connection = client(settings, function(err) {
 				if(err) return done(err)
 					
+				es.addConnection(connection)
+
 				var setData = {
 							expectedMetastreamVersion: client.expectedVersion.emptyStream
 						, metadata: client.createStreamMetadata({
@@ -119,12 +120,6 @@ describe('subscribe_to_all_should', function() {
   })
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

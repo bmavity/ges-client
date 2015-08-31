@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -13,11 +13,11 @@ describe('subscribe_should', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 1234 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 1234 }, done)
+			connection = client(settings, done)
+			es.addConnection(connection)
 		})
 	})
 
@@ -125,12 +125,6 @@ describe('subscribe_should', function() {
   })
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

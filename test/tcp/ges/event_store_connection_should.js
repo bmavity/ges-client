@@ -1,24 +1,23 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, async = require('async')
 	, createTestEvent = require('../../createTestEvent')
 
 describe('event_store_connection_should', function() {
 	var es
+		, connectionSettings
 
 	before(function(done) {
-		ges({ tcpPort: 5000 }, function(err, memory) {
-			if(err) return done(err)
-
-			es = memory
-			done()
+		es = ges(function(err, settings) {
+			connectionSettings = settings
+			done(err)
 		})
 	})
 
   it('not_throw_on_close_if_connect_was_not_called', function(done) {
 		var connection = client({
-					port: 5000
+					port: connectionSettings.port
 				, requireExplicitConnect: true
 				})
 
@@ -29,7 +28,7 @@ describe('event_store_connection_should', function() {
   })
 
   it('not_throw_on_close_if_called_multiple_times', function(done) {
-		client({ port: 5000 }, function(err, connection) {
+		client(connectionSettings, function(err, connection) {
 			if(err) return done(err)
 			connection.close(function(err) {
 				if(err) return done(err)
@@ -47,7 +46,7 @@ describe('event_store_connection_should', function() {
 
   it('throw_invalid_operation_on_every_api_call_if_connect_was_not_called', function(done) {
   	var connection = client({
-					port: 5000
+					port: connectionSettings.port
 				, requireExplicitConnection: true
 				})
   		, s = 'stream'
@@ -137,10 +136,6 @@ describe('event_store_connection_should', function() {
   })
 	
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
-  	})
-  	es.on('error', done)
-  	es.kill()
+  	es.cleanup(done)
   })
 })

@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -9,18 +9,21 @@ var client = require('../../../')
 
 describe('deleting_stream', function() {
 	var es
+		, connectionSettings
 
 	before(function(done) {
-		ges({ tcpPort: 5008 }, function(err, memory) {
-			if(err) return done(err)
-
-			es = memory
-			done()
+		es = ges(function(err, settings) {
+			settings = settings
+			done(err)
 		})
 	})
 
 	function getConnection(cb) {
-		client({ port: 5008 }, cb)
+		client(connectionSettings, function(err, con) {
+			if(err) return cb(err)
+			es.addConnection(con)
+			cb(null, con)
+		})
 	}
 
   it('which_doesnt_exists_should_success_when_passed_empty_stream_expected_version', function(done) {
@@ -109,10 +112,6 @@ describe('deleting_stream', function() {
   })
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
-  	})
-  	es.on('error', done)
-  	es.kill()
+  	es.cleanup(done)
   })
 })

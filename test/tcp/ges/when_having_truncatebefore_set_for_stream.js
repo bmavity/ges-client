@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -14,11 +14,11 @@ describe('when_having_truncatebefore_set_for_stream', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5026 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5026 }, done)
+			connection = client(settings, done)
+			es.addConnection(connection)
 		})
 	})
 
@@ -846,12 +846,6 @@ describe('when_having_truncatebefore_set_for_stream', function() {
 
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

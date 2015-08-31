@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -23,12 +23,13 @@ describe('read_event_of_linkto_to_deleted_event', function() {
 					expectedVersion: client.expectedVersion.any
 				, auth: auth
 				}
-		ges({ tcpPort: 5019 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5019 }, function(err) {
+			connection = client(settings, function(err) {
 				if(err) return done(err)
+
+				es.addConnection(connection)
 
 				appendData.events = client.createEventData(uuid.v4(), 'testing', true, new Buffer(JSON.stringify({ foo: 4 })))
 				connection.appendToStream(deletedStreamName, appendData, function(err) {
@@ -78,13 +79,7 @@ describe('read_event_of_linkto_to_deleted_event', function() {
   })
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })
 
@@ -104,12 +99,13 @@ describe('read_allevents_backward_with_linkto_deleted_event', function() {
 					expectedVersion: client.expectedVersion.any
 				, auth: auth
 				}
-		ges({ tcpPort: 5018 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5018 }, function(err) {
+			connection = client(settings, function(err) {
 				if(err) return done(err)
+
+				es.addConnection(connection)
 
 				appendData.events = client.createEventData(uuid.v4(), 'testing', true, new Buffer(JSON.stringify({ foo: 4 })))
 				connection.appendToStream(deletedStreamName, appendData, function(err) {
@@ -172,12 +168,6 @@ describe('read_allevents_backward_with_linkto_deleted_event', function() {
 
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

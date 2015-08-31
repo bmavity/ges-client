@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').external
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -13,11 +13,11 @@ describe('when_working_with_stream_metadata_as_byte_array', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5004 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5004 }, done)
+			connection = client(settings, done)
+			es.addConnection(connection)
 		})
 	})
 
@@ -216,12 +216,6 @@ describe('when_working_with_stream_metadata_as_byte_array', function() {
     //var stream = 'getting_metadata_for_deleted_stream_returns_empty_byte_array_and_signals_stream_deletion'
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })
