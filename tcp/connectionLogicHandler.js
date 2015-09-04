@@ -79,9 +79,6 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartSubscription: function(message) {
 					this._subscriptions.scheduleSubscription(message, this._connection)
 				}
-			, StartConnection: function(message, cb) {
-					cb(null)
-				}
 			, TcpConnectionEstablished: noOp
 			}
 		, Closed: {
