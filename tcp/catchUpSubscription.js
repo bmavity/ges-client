@@ -70,12 +70,15 @@ EsCatchUpSubscription.prototype.start = function() {
 }
 
 EsCatchUpSubscription.prototype.stop = function() {
+	var me = this
 	this._shouldStop = true
 	if(this._liveSub) {
 		this._liveSub.unsubscribe()
 	} else {
-		this._isDropped = true
-		this.emit('dropped')
+		setImmediate(function() {
+			this._isDropped = true
+			me.emit('dropped')
+		})
 	}
 }
 
@@ -253,8 +256,6 @@ EsAllCatchUpSubscription.prototype._tryProcess = function(evt) {
 	setImmediate(function() {
 		if(evt.OriginalPosition.compare(me.lastProcessedPosition) === 1) {
 			me.emit('event', evt)
-			//console.log('setting last position')
-			//console.log(evt.OriginalPosition.commitPosition)
 			me.lastProcessedPosition = evt.OriginalPosition
 		}
 	})
