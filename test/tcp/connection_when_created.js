@@ -10,6 +10,7 @@ describe('connection, when created', function() {
 			if(err) return done(err)
 
 			esSettings = settings
+			done()
 		})
 	})
 
@@ -25,7 +26,7 @@ describe('connection, when created', function() {
 		var connection = client(esSettings)
 		
 		connection.on('connect', function(message) {
-			message.endPoint.port.should.equal(esSettings.tcpPort)
+			message.endPoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
 			connection.close(done)
 		})
@@ -35,7 +36,7 @@ describe('connection, when created', function() {
 		var connection = client(esSettings)
 		
 		connection.on('connect', function(message) {
-			message.endPoint.port.should.equal(esSettings.tcpPort)
+			message.endPoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
 			connection.close(done)
 		})
