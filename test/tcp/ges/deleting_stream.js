@@ -13,7 +13,7 @@ describe('deleting_stream', function() {
 
 	before(function(done) {
 		es = ges(function(err, settings) {
-			settings = settings
+			connectionSettings = settings
 			done(err)
 		})
 	})
