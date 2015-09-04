@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper').external
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')

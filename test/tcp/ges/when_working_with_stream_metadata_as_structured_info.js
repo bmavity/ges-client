@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper').external
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -21,7 +21,7 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 	})
 
   it('setting_empty_metadata_works', function(done) {
-		var stream = 'setting_empty_metadata_works'
+		var stream = 'setting_empty_metadata_works_structured_info'
 			, setData = {
 					expectedMetastreamVersion: client.expectedVersion.emptyStream
 				, metadata: client.createStreamMetadata()
@@ -114,7 +114,7 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
   })
 
   it('setting_metadata_with_expected_version_any_works', function(done) {
-    var stream = 'setting_metadata_with_expected_version_any_works'
+    var stream = 'setting_metadata_with_expected_version_any_works_structured_info'
 			, setData1 = {
 					expectedMetastreamVersion: client.expectedVersion.any
 				, metadata: client.createStreamMetadata({
@@ -171,7 +171,7 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
   })
 
   it('setting_metadata_for_not_existing_stream_works', function(done) {
-    var stream = 'setting_metadata_for_not_existing_stream_works'
+    var stream = 'setting_metadata_for_not_existing_stream_works_structured_info'
    		, setData = {
 					expectedMetastreamVersion: client.expectedVersion.emptyStream
 				, metadata: client.createStreamMetadata({
@@ -202,7 +202,7 @@ describe('when_working_with_stream_metadata_as_structured_info', function() {
 	})
 
   it('setting_metadata_for_existing_stream_works', function(done) {
-    var stream = 'setting_metadata_for_existing_stream_works'
+    var stream = 'setting_metadata_for_existing_stream_works_structured_info'
     	, appendData = {
     			expectedVersion: client.expectedVersion.emptyStream
     		, events: createTestEvent()
