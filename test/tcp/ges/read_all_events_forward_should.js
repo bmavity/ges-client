@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -14,12 +14,14 @@ describe('read_all_events_forward_should', function() {
 		, testEvents = createTestEvent(range(0, 20))
 
 	before(function(done) {
-		ges({ tcpPort: 5007 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5007 }, function(err) {
+			connection = client(settings, function(err) {
 				if(err) return done(err)
+
+				es.addConnection(connection)
+
 
 				var setData = {
 							expectedMetastreamVersion: -1
@@ -155,13 +157,7 @@ describe('read_all_events_forward_should', function() {
 	})
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })
 

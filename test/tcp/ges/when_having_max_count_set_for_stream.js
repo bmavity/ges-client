@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -14,15 +14,16 @@ describe('when_having_max_count_set_for_stream', function() {
 		, connection
 		, stream = 'max-count-test-stream'
 		, testEvents = createTestEvent(range(0, 5))
-		, port = 8000
 
 	beforeEach(function(done) {
-		ges({ tcpPort: port }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: port }, function(err) {
+			connection = client(settings, function(err) {
 				if(err) return done(err)
+
+				es.addConnection(connection)
+
 				var setMetadata = {
 							expectedMetastreamVersion: client.expectedVersion.emptyStream
 						, metadata: client.createStreamMetadata({
@@ -194,13 +195,6 @@ describe('when_having_max_count_set_for_stream', function() {
   })
 
   afterEach(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-	  		port += 1
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

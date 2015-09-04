@@ -1,12 +1,11 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
 	, should = require('../../shouldExtensions')
-	, port = 8200
 
 
 describe('when_committing_empty_transaction', function() {
@@ -16,13 +15,15 @@ describe('when_committing_empty_transaction', function() {
 		, stream = 'test-stream'
 
 	beforeEach(function(done) {
-		ges({ tcpPort: port }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			client({ port: port }, function(err, con) {
+			client(settings, function(err, con) {
 				if(err) return done(err)
+
 				connection = con
+				es.addConnection(connection)
+
 				var appendOptions = {
 							expectedVersion: client.expectedVersion.noStream
 						, events: [ firstEvent, createTestEvent(), createTestEvent() ]
@@ -143,13 +144,6 @@ describe('when_committing_empty_transaction', function() {
   })
 
   afterEach(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-	  		port += 1
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

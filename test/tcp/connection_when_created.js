@@ -1,20 +1,21 @@
 var client = require('../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').memory
 
 describe('connection, when created', function() {
 	var es
+		, esSettings
 
 	before(function(done) {
-		ges({ tcpPort: 6000 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
+			esSettings = settings
 			done()
 		})
 	})
 
 	it('with a callback, should be connected when callback is called', function(done) {
-		client({ port: 6000 }, function(err, connection) {
+		client(esSettings, function(err, connection) {
 			(err === null).should.be.true
 			connection.isInState('Connected').should.be.true
 			connection.close(done)
@@ -22,23 +23,20 @@ describe('connection, when created', function() {
 	})
 
 	it('without a callback, should raise connect event with endpoint as data', function(done) {
-		var connection = client({ port: 6000 })
+		var connection = client(esSettings)
 		
 		connection.on('connect', function(message) {
-			message.endPoint.port.should.equal(6000)
+			message.endPoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
 			connection.close(done)
 		})
 	})
 
 	it('without a callback and with requireExplicitConnection flag set, should raise connect event with endpoint as data', function(done) {
-		var connection = client({
-					port: 6000
-				, requireExplicitConnection: true
-				})
+		var connection = client(esSettings)
 		
 		connection.on('connect', function(message) {
-			message.endPoint.port.should.equal(6000)
+			message.endPoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
 			connection.close(done)
 		})
@@ -47,7 +45,7 @@ describe('connection, when created', function() {
 	})
 
 	it('with a callback and with requireExplicitConnection flag set, should be connected when callback is called', function(done) {
-		var con = client({ port: 6000, requireExplicitConnection: true }, function(err, connection) {
+		var con = client(esSettings, function(err, connection) {
 			(err === null).should.be.true
 			connection.isInState('Connected').should.be.true
 			connection.close(done)
@@ -57,10 +55,6 @@ describe('connection, when created', function() {
 	})
 
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
-  	})
-  	es.on('error', done)
-  	es.kill()
+  	es.cleanup(done)
   })
 })

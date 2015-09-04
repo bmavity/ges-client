@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, async = require('async')
 	, createTestEvent = require('../../createTestEvent')
@@ -13,11 +13,11 @@ describe('transaction', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5011 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5011 }, done)
+			connection = client(settings, done)
+			es.addConnection(connection)
 		})
 	})
 
@@ -306,12 +306,6 @@ describe('transaction', function() {
   })
 
   after(function(done) {
-  	connection.close(function() {
-	  	es.on('exit', function(code, signal) {
-		  	done()
-	  	})
-	  	es.on('error', done)
-	  	es.kill()
-  	})
+  	es.cleanup(done)
   })
 })

@@ -1,5 +1,5 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper')
+	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, createTestEvent = require('../../createTestEvent')
 	, range = require('../../range')
@@ -11,19 +11,11 @@ describe('connect', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5001 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5001 })
-
-			connection.on('connect', function() {
-				connection.close(function() {
-					done()
-				})
-			})
-
-			connection.on('error', done)
+			connection = client(settings, done)
+			es.addConnection(connection)
 		})
 	})
 
@@ -32,11 +24,7 @@ describe('connect', function() {
   it('should_close_connection_after_configured_amount_of_failed_reconnections')
     
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
-  	})
-  	es.on('error', done)
-  	es.kill()
+  	es.cleanup(done)
   })
 })
 
@@ -46,30 +34,18 @@ describe('not_connected_tests', function() {
 		, connection
 
 	before(function(done) {
-		ges({ tcpPort: 5001 }, function(err, memory) {
+		es = ges(function(err, settings) {
 			if(err) return done(err)
 
-			es = memory
-			connection = client({ port: 5001 })
-
-			connection.on('connect', function() {
-				connection.close(function() {
-					done()
-				})
-			})
-
-			connection.on('error', done)
+			connection = client(settings, done)
+			es.addConnection(connection)
 		})
 	})
 
   it('should_timeout_connection_after_configured_amount_time_on_conenct')
     
   after(function(done) {
-  	es.on('exit', function(code, signal) {
-	  	done()
-  	})
-  	es.on('error', done)
-  	es.kill()
+  	es.cleanup(done)
   })
 })
 

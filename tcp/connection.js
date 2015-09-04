@@ -57,7 +57,7 @@ function EsTcpConnection(endPoint) {
 	this._handler = connectionLogicHandler()
 
 	this._handler.on('connect', function(args) {
-		me.emit.apply(me, ['connect'].concat(Array.prototype.slice.call(arguments, 0)))
+		me.emit.apply(me, ['connect', args])
 	})
 }
 util.inherits(EsTcpConnection, EventEmitter)
@@ -132,6 +132,9 @@ EsTcpConnection.prototype.connect = function() {
 		name: 'StartConnection'
 	, data: {
 			endPoint: this._endPoint
+		}
+	, cb: function(err) {
+			// NoOp?
 		}
 	})
 }
