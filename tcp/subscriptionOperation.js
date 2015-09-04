@@ -16,6 +16,9 @@ function SubscriptionOperation(correlationId, subscriptionData, connection) {
 	var subscription = subscriptionData.subscription
 
 	subscription.on('unsubscribe requested', function() {
+		//BLM: Locate root cause here
+		if(!connection._socket.writable) return
+
 		connection.enqueueSend({
 			messageName: 'UnsubscribeFromStream'
 		, correlationId: correlationId
