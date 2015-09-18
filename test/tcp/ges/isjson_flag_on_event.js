@@ -21,14 +21,18 @@ describe('isjson_flag_on_event', function() {
 		})
 	})
 
+	function getData() {
+		return new Buffer(JSON.stringify({ some: 'json' }))
+	}
+
   it('should_be_preserved_with_all_possible_write_and_read_methods', function(done) {
     var stream = 'should_be_preserved_with_all_possible_write_methods'
     	, appendOptions = {
     			expectedVersion: client.expectedVersion.any
     		, events: [
-    				client.createEventData(uuid.v4(), 'some-type', true, { some: 'json' }, null)
-    			, client.createEventData(uuid.v4(), 'some-type', true, null, { some: 'json' })
-    			, client.createEventData(uuid.v4(), 'some-type', true, { some: 'json' }, { some: 'json' })
+    				client.createEventData(uuid.v4(), 'some-type', true, getData(), null)
+    			, client.createEventData(uuid.v4(), 'some-type', true, null, getData())
+    			, client.createEventData(uuid.v4(), 'some-type', true, getData(), getData())
     			]
 	    	}
 
@@ -41,9 +45,9 @@ describe('isjson_flag_on_event', function() {
     	connection.startTransaction(stream, transactionOptions, function(err, transaction) {
 	    	if(err) return done(err)
     		var events = [
-	    				client.createEventData(uuid.v4(), 'some-type', true, { some: 'json' }, null)
-	    			, client.createEventData(uuid.v4(), 'some-type', true, null, { some: 'json' })
-	    			, client.createEventData(uuid.v4(), 'some-type', true, { some: 'json' }, { some: 'json' })
+	    				client.createEventData(uuid.v4(), 'some-type', true, getData(), null)
+	    			, client.createEventData(uuid.v4(), 'some-type', true, null, getData())
+	    			, client.createEventData(uuid.v4(), 'some-type', true, getData(), getData())
 	    			]
 	    	transaction.write(events, function(err) {
 	    		if(err) return done(err)

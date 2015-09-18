@@ -262,7 +262,7 @@ describe('transaction', function() {
     	, transactionOptions = {
     			expectedVersion: client.expectedVersion.any
 	    	}
-	    , evt = client.createEventData(uuid.v4(), 'SomethingHappened', true, { Value: 42}, null)
+	    , evt = client.createEventData(uuid.v4(), 'SomethingHappened', true, new Buffer(JSON.stringify({ Value: 42 })), null)
 
     connection.startTransaction(stream, transactionOptions, function(err, transaction1) {
     	if(err) return done(err)
