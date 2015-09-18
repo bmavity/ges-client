@@ -212,7 +212,7 @@ var operations = {
 					eventStreamId: operationData.stream
 				, fromEventNumber: payload.start
 				, maxCount: payload.count
-				, resolveLinkTaos: !!payload.resolveLinkTos
+				, resolveLinkTos: !!payload.resolveLinkTos
 				, requireMaster: !!payload.requireMaster
 		  	})
 	  	}
