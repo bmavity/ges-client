@@ -26,17 +26,11 @@ OperationsManager.prototype.getActiveOperation = function(correlationId) {
 	return this._activeOperations[correlationId]
 }
 
-var c = -1
 OperationsManager.prototype.scheduleOperation = function(operationData, tcpConnection) {
 	var correlationId = uuid.v4()
 		, operation = operations(operationData, this)
 
 	this._activeOperations[correlationId] = operation
 	
-	c += 1
-	if(c % 1000 === 0) {
-		console.log('Currently storing operation count = ' + Object.keys(this._activeOperations).length)
-	}
-
 	tcpConnection.enqueueSend(operation.toTcpMessage(correlationId))
 }
