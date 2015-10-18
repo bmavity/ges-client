@@ -1,6 +1,7 @@
 var tcpPackageConnection = require('./tcpPackageConnection')
 	, operationsManager = require('./operationsManager')
 	, subscriptionsManager = require('./subscriptionsManager')
+	, createQueue = require('./simpleQueuedHandler')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
 	, states = {
@@ -11,7 +12,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			, StartConnection: function(message, cb) {
 					this._endPoint = message.endPoint
 					this._state = states['Connecting']
-					this._connectingPhase = 'Reconnecting'
+					this._connectingPhase = connectingPhase.Reconnecting
 					this._discoverEndPoint(cb)
 				}
 			, StartOperation: raiseNotActive
@@ -21,9 +22,9 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 		, Connecting: {
 				CloseConnection: performCloseConnection
 			, EstablishTcpConnection: function(message) {
-					if(this._connectingPhase !== 'EndPointDiscovery') return
+					if(this._connectingPhase !== connectingPhase.EndPointDiscovery) return
 
-					this._connectingPhase = 'ConnectionEstablishing'
+					this._connectingPhase = connectingPhase.ConnectionEstablishing
 					var me = this
 						, connection = tcpPackageConnection({
 								endPoint: this._endPoint
@@ -156,6 +157,11 @@ function EsConnectionLogicHandler() {
 
 	EventEmitter.call(this)
 
+	var me = this
+
+	this._queue = createQueue()
+
+	this._queue.registerHandler('TimerTick', function(msg) { me._timerTick() })
 
 	this._handlers = {}
 
@@ -168,7 +174,13 @@ function EsConnectionLogicHandler() {
 	this._subscriptions = subscriptionsManager()
 
 	this._setState('Init')
-	this._connectingPhase = 'Invalid'
+	this._connectingPhase = connectingPhase.Invalid
+
+	this._timer = setInterval(function() {
+		me._enqueueMessage({
+			type: 'TimerTick'
+		})
+	}, 200)
 }
 util.inherits(EsConnectionLogicHandler, EventEmitter)
 
@@ -190,9 +202,9 @@ EsConnectionLogicHandler.prototype._closeTcpConnection = function(reason, cb) {
 
 EsConnectionLogicHandler.prototype._discoverEndPoint = function(cb) {
 	if(!this.isInState('Connecting')) return cb(null)
-	if(this._connectingPhase !== 'Reconnecting') return cb(null)
+	if(this._connectingPhase !== connectingPhase.Reconnecting) return cb(null)
 
-	this._connectingPhase = 'EndPointDiscovery'
+	this._connectingPhase = connectingPhase.EndPointDiscovery
 	//TODO: True endpoint discovery
 	this.enqueueMessage({
 		name: 'EstablishTcpConnection'
@@ -215,7 +227,7 @@ EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
 
 EsConnectionLogicHandler.prototype.goToConnectedState = function() {
 	this._setState('Connected')
-	this._connectingPhase = 'Connected'
+	this._connectingPhase = connectingPhase.Connected
 
 	this.emit('connect', {
 		endPoint: this._endPoint
@@ -240,6 +252,39 @@ EsConnectionLogicHandler.prototype._processNextMessage = function() {
 	})
 }
 
+EsConnectionLogicHandler.prototype._enqueueMessage = function(message) {
+	this._queue.enqueueMessage(message)
+}
+
+EsConnectionLogicHandler.prototype._isInPhase = function(connectingPhase) {
+	return this._connectingPhase === connectingPhase
+}
+
 EsConnectionLogicHandler.prototype._setState = function(stateName) {
 	this._state = states[stateName]
+}
+
+EsConnectionLogicHandler.prototype._timerTick = function() {
+	switch(this._state) {
+		case 'Init': break
+		case 'Connecting':
+			if(this._isInPhase(connectingPhase.Reconnecting)) {
+				
+			}
+			break
+		case 'Connected':
+			break
+		case 'Closed': break
+		default: throw new Error('Unknown state: ' + this._state)
+	}
+}
+
+
+var connectingPhase = {
+	Invalid: 0
+, Reconnecting: 1
+, EndPointDiscovery: 2
+, ConnectionEstablishing: 3
+, Authentication: 4
+, Connected: 5
 }
