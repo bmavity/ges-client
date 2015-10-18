@@ -177,7 +177,7 @@ function EsConnectionLogicHandler() {
 	this._connectingPhase = connectingPhase.Invalid
 
 	this._timer = setInterval(function() {
-		me._enqueueMessage({
+		me.enqueueMessage({
 			type: 'TimerTick'
 		})
 	}, 200)
@@ -218,11 +218,15 @@ EsConnectionLogicHandler.prototype._discoverEndPoint = function(cb) {
 EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
 	var me = this
 
-	this._queuedMessages.push(message)
+	if(message.type) {
+		this._queue.enqueueMessage(message)
+	} else {
+		this._queuedMessages.push(message)
 
-	setImmediate(function() {
-		me._processNextMessage()
-	})
+		setImmediate(function() {
+			me._processNextMessage()
+		})
+	}
 }
 
 EsConnectionLogicHandler.prototype.goToConnectedState = function() {
@@ -252,10 +256,6 @@ EsConnectionLogicHandler.prototype._processNextMessage = function() {
 	})
 }
 
-EsConnectionLogicHandler.prototype._enqueueMessage = function(message) {
-	this._queue.enqueueMessage(message)
-}
-
 EsConnectionLogicHandler.prototype._isInPhase = function(connectingPhase) {
 	return this._connectingPhase === connectingPhase
 }
@@ -269,7 +269,7 @@ EsConnectionLogicHandler.prototype._timerTick = function() {
 		case 'Init': break
 		case 'Connecting':
 			if(this._isInPhase(connectingPhase.Reconnecting)) {
-				
+
 			}
 			break
 		case 'Connected':
