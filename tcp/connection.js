@@ -11,6 +11,8 @@ var util = require('util')
 	, streamMetadata = require('./streamMetadata')
 	, streamMetadataResult = require('./streamMetadataResult')
 	, transaction = require('./transaction')
+	, endpointDiscoverer = require('./staticEndpointDiscoverer')
+	, messages = require('./messages')
 
 module.exports = createConnection
 
@@ -19,10 +21,10 @@ function createConnection(opts, cb) {
 	opts = opts || {}
 	opts.host = opts.host || '127.0.0.1'
 	opts.port = opts.port || 1113
-	var connection = new EsTcpConnection({
+	var connection = new EsTcpConnection(endpointDiscoverer({
 				host: opts.host
 			, port: opts.port
-			})
+			}))
 		, onConnect = function() {
 				connection.removeListener('connect', onConnect)
 				connection.removeListener('error', onErr)
@@ -47,12 +49,12 @@ function createConnection(opts, cb) {
 }
 
 
-function EsTcpConnection(endPoint) {
+function EsTcpConnection(endpointDiscoverer) {
 	EventEmitter.call(this)
 
 	var me = this
 
-	this._endPoint = endPoint
+	this._endpointDiscoverer = endpointDiscoverer
 
 	this._handler = connectionLogicHandler()
 
@@ -128,15 +130,7 @@ EsTcpConnection.prototype.close = function(cb) {
 }
 
 EsTcpConnection.prototype.connect = function() {
-	this._handler.enqueueMessage({
-		name: 'StartConnection'
-	, data: {
-			endPoint: this._endPoint
-		}
-	, cb: function(err) {
-			// NoOp?
-		}
-	})
+	this._handler.enqueueMessage(messages.startConnection(this._endpointDiscoverer, function(err) { }))
 }
 
 EsTcpConnection.prototype.enqueueOperation = function(operationData) {
