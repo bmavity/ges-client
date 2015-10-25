@@ -6,6 +6,9 @@ module.exports = {
 , establishTcpConnection: function(endpoint) {
 		return new EstablishTcpConnection(endpoint)
 	}
+, handleTcpPackage: function(connection, package) {
+		return new HandleTcpPackageMessage(connection, package)
+	}
 , startConnection: function(endpointDiscoverer, cb) {
 		return new StartConnection(endpointDiscoverer, cb)
 	}
@@ -26,6 +29,14 @@ function EstablishTcpConnection(endpoints) {
 	this.type = 'EstablishTcpConnection'
 	this.payload = {
 		endpoints: endpoints
+	}
+}
+
+function HandleTcpPackageMessage(connection, package) {
+	this.type = 'HandleTcpPackage'
+	this.payload = {
+		connection: connection
+	, package: package
 	}
 }
 

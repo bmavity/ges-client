@@ -16,7 +16,8 @@
     "is": "^2.0.1",
     "node-uuid": "^1.4.1",
     "protobufjs": "^4.0.0",
-    "request": "2.34.x"
+    "request": "2.34.x",
+    "statman-stopwatch": "^1.0.4"
   },
   "devDependencies": {
     "async": "^0.9.0",

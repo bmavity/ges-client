@@ -6,15 +6,15 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 	, ensure = require('../ensure')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
+	, uuid = require('node-uuid')
+	, Stopwatch = require('statman-stopwatch')
 	, states = {
 			Init: {
-			  HandleTcpPackage: noOp
-			, StartOperation: raiseNotActive
+			  StartOperation: raiseNotActive
 			, StartSubscription: raiseNotActive
 			}
 		, Connecting: {
-			  HandleTcpPackage: handlePackage
-			, StartOperation: function(operation, cb) {
+			  StartOperation: function(operation, cb) {
 					this._operations.enqueueOperation(operation, cb)
 				}
 			, StartSubscription: function(message) {
@@ -22,8 +22,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 				}
 			}
 		, Connected: {
-			  HandleTcpPackage: handlePackage
-			, StartOperation: function(operation) {
+			  StartOperation: function(operation) {
 					this._operations.scheduleOperation(operation, this._connection)
 				}
 			, StartSubscription: function(message) {
@@ -31,8 +30,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 				}
 			}
 		, Closed: {
-			  HandleTcpPackage: noOp
-			, StartOperation: raiseClosed
+			  StartOperation: raiseClosed
 			, StartSubscription: raiseClosed
 			}
 		}
@@ -103,12 +101,14 @@ function EsConnectionLogicHandler() {
 	var me = this
 
 	this._queue = createQueue()
+	this._stopwatch = new Stopwatch(true)
 
 	this._queue.registerHandler('StartConnection', function(msg) { me._startConnection(msg.endpointDiscoverer, msg.cb) })
 	this._queue.registerHandler('CloseConnection', function(msg) { me._closeConnection(msg.reason, msg.exception) })
 
 	this._queue.registerHandler('EstablishTcpConnection', function(msg) { me._establishTcpConnection(msg.endpoints) })
 	this._queue.registerHandler('TcpConnectionEstablished', function(msg) { me._tcpConnectionEstablished(msg.connection) })
+	this._queue.registerHandler('HandleTcpPackage', function(msg) { me._handleTcpPackage(msg.connection, msg.package) })
 
 	this._queue.registerHandler('TimerTick', function(msg) { me._timerTick() })
 
@@ -127,6 +127,7 @@ function EsConnectionLogicHandler() {
 	this._connectionState = 'Init'
 	this._connectingPhase = connectingPhase.Invalid
 	this._wasConnected = false
+	this._packageNumber = 0
 
 	this._timer = setInterval(function() {
 		me.enqueueMessage({
@@ -184,7 +185,7 @@ EsConnectionLogicHandler.prototype._closeConnection = function(reason, exception
 }
 
 EsConnectionLogicHandler.prototype._closeTcpConnection = function(reason) {
-	if (this._connection == null) {
+	if(this._connection === null) {
     //TODO: 
     LogDebug("CloseTcpConnection IGNORED because _connection == null");
     return;
@@ -240,7 +241,7 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 	}
 
 	//TODO: 
-	LogDebug("EstablishTcpConnection to [" + endpoint + "]")
+	LogDebug("EstablishTcpConnection to [" + endpoint.host + ':' + endpoint.port + "]")
 
 	if(this._connectionState !== 'Connecting') return
 	if(this._connectingPhase !== connectingPhase.EndpointDiscovery) return
@@ -257,13 +258,7 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 	})
 
 	connection.on('package', function(data) {
-		me.enqueueMessage({
-			name: 'HandleTcpPackage'
-		, data: {
-				connection: data.connection
-			, package: data.package
-			}
-		})
+		me.enqueueMessage(messages.handleTcpPackage(data.connection, data.package))
 	})
 
 	this._connection = connection
@@ -279,8 +274,13 @@ EsConnectionLogicHandler.prototype._getStateMessageHandler = function(stateMessa
 	return handler
 }
 
+EsConnectionLogicHandler.prototype._handleTcpPackage = function(connection, package) {
+	this._getStateMessageHandler(handleTcpPackageHandlers)
+		.call(this, connection, package)
+}
+
 EsConnectionLogicHandler.prototype._goToConnectedState = function() {
-	ensure.exists(this._connection, "_connection");
+	ensure.exists(this._connection, 'connection');
 
   this._connectionState = 'Connected'
   this._connectingPhase = connectingPhase.Connected
@@ -290,16 +290,47 @@ EsConnectionLogicHandler.prototype._goToConnectedState = function() {
   this.emit('connect', this._connection.RemoteEndPoint)
 
 /*
-  if(_stopwatch.Elapsed - _lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
-    _operations.CheckTimeoutsAndRetry(_connection)
-    _subscriptions.CheckTimeoutsAndRetry(_connection)
-    _lastTimeoutsTimeStamp = _stopwatch.Elapsed
+  if(this._stopwatch.read() - this._lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
+    this._operations.CheckTimeoutsAndRetry(_connection)
+    this._subscriptions.CheckTimeoutsAndRetry(_connection)
+    this._lastTimeoutsTimeStamp = this._stopwatch.read()
   }
 */
 }
 
 EsConnectionLogicHandler.prototype._isInPhase = function(connectingPhase) {
 	return this._connectingPhase === connectingPhase
+}
+
+EsConnectionLogicHandler.prototype._manageHeartbeats = function() {
+	if(this._connection === null) throw new Error('Trying to process heartbeat message when connection is null.')
+
+  var timeout = 2000 //this._heartbeatInfo.IsIntervalStage ? this._settings.HeartbeatInterval : this._settings.HeartbeatTimeout
+  if(this._stopwatch.read() - this._heartbeatInfo.TimeStamp < timeout) return
+
+  var packageNumber = this._packageNumber
+  if(this._heartbeatInfo.LastPackageNumber !== packageNumber) {
+    this._heartbeatInfo = new HeartbeatInfo(packageNumber, true, this._stopwatch.read())
+    return
+  }
+
+  if(this._heartbeatInfo.IsIntervalStage) {
+    // TcpMessage.Heartbeat analog
+    this._connection.enqueueSend({
+			messageName: 'HeartbeatRequestCommand'
+		, correlationId: uuid.v4()
+		})
+    this._heartbeatInfo = new HeartbeatInfo(this._heartbeatInfo.LastPackageNumber, false, this._stopwatch.read())
+  } else {
+    // TcpMessage.HeartbeatTimeout analog
+    // TODO:
+    LogInfo("EventStoreConnection '{0}': closing TCP connection [{1}, L{2}, {3:B}] due to HEARTBEAT TIMEOUT at pkgNum {4}.")
+    /*
+      _esConnection.ConnectionName, _connection.RemoteEndPoint, _connection.LocalEndPoint,
+      _connection.ConnectionId, packageNumber)
+*/
+    this._closeTcpConnection("EventStoreConnection '{0}': closing TCP connection [{1}, L{2}, {3:B}] due to HEARTBEAT TIMEOUT at pkgNum {4}.")
+	} 
 }
 
 EsConnectionLogicHandler.prototype._setState = function(stateName) {
@@ -331,7 +362,7 @@ EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
   //this._subscriptions.PurgeSubscribedAndDroppedSubscriptions(_connection.ConnectionId);
   this._reconnInfo = {
   	reconnectionAttempt: _reconnInfo.ReconnectionAttempt
-  , timeStamp: _stopwatch.Elapsed
+  , timeStamp: this._stopwatch.read()
 	}
 
   if(this._wasConnected) {
@@ -352,14 +383,14 @@ EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connecti
 
   //TODO:
   LogDebug("TCP connection to [{0}, L{1}, {2:B}] established.", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
-  //_heartbeatInfo = new HeartbeatInfo(_packageNumber, true, _stopwatch.Elapsed);
+  this._heartbeatInfo = new HeartbeatInfo(this._packageNumber, true, this._stopwatch.read());
 
   if((this._settings || {}).DefaultUserCredentials) {
     _connectingPhase = connectingPhase.Authentication;
 
 /*
-    _authInfo = new AuthInfo(Guid.NewGuid(), _stopwatch.Elapsed);
-    _connection.EnqueueSend(new TcpPackage(TcpCommand.Authenticate,
+    _authInfo = new AuthInfo(Guid.NewGuid(), this._stopwatch.read());
+    _connection.EnqueueSend(new TcpPackage('Authenticate,
                                              TcpFlags.Authenticated,
                                              _authInfo.CorrelationId,
                                              _settings.DefaultUserCredentials.Username,
@@ -408,6 +439,110 @@ function performCloseConnection(reason, exception) {
 	this.emit('closed', reason)
 }
 
+var handleTcpPackageHandlers = {
+			Init: noOp
+		, Connecting: handleTcpPackage
+		, Connected: handleTcpPackage
+		, Closed: noOp
+		}
+
+function handleTcpPackage(connection, package) {
+	console.log(package)
+	if(this._connection !== connection || this._connectionState === 'Closed' || this._connectionState === 'Init') {
+    LogDebug("IGNORED: HandleTcpPackage connId {0}, package {1}, {2}.", connection.ConnectionId, package.Command, package.CorrelationId)
+    return
+  }
+            
+  LogDebug("HandleTcpPackage connId {0}, package {1}, {2}.", this._connection.ConnectionId, package.Command, package.CorrelationId)
+  this._packageNumber += 1
+
+  if(package.messageName === 'HeartbeatResponseCommand') return
+  if(package.messageName === 'HeartbeatRequestCommand') {
+    this._connection.enqueueSend({
+    	messageName: 'HeartbeatResponseCommand'
+  	, correlationId: package.correlationId
+	  })
+    return
+  }
+
+  if(package.messageName === 'Authenticated' || package.messageName === 'NotAuthenticated') {
+    if(this._connectionState === 'Connecting' && this._connectingPhase === connectingPhase.Authentication) {
+     	//&& _authInfo.CorrelationId === package.correlationId) {
+	/*
+      if(package.Command == 'NotAuthenticated) {
+        RaiseAuthenticationFailed("Not authenticated")
+      }
+      */
+
+      this._goToConnectedState()
+      return
+    }
+  }
+
+  if(package.messageName === 'BadRequest' && package.correlationId === '00000000-0000-0000-0000-000000000000') {
+    //string message = Helper.EatException(() => Helper.UTF8NoBom.GetString(package.Data.Array, package.Data.Offset, package.Data.Count))
+    var exc = new Error('Bad request received from server. Error: {0}')
+      // TODOD:
+       // string.Format("Bad request received from server. Error: {0}", string.IsNullOrEmpty(message) ? "<no message>" : message));
+    this._closeConnection('Connection-wide BadRequest received. Too dangerous to continue.', exc)
+    return
+  }
+
+/*
+  OperationItem operation;
+  SubscriptionItem subscription;
+  if (_operations.TryGetActiveOperation(package.CorrelationId, out operation))
+  {
+    var result = operation.Operation.InspectPackage(package);
+    LogDebug("HandleTcpPackage OPERATION DECISION {0} ({1}), {2}", result.Decision, result.Description, operation);
+    switch (result.Decision)
+    {
+      case InspectionDecision.DoNothing: break; 
+      case InspectionDecision.EndOperation: 
+        _operations.RemoveOperation(operation); 
+        break;
+      case InspectionDecision.Retry: 
+        _operations.ScheduleOperationRetry(operation); 
+        break;
+      case InspectionDecision.Reconnect:
+        ReconnectTo(new NodeEndPoints(result.TcpEndPoint, result.SecureTcpEndPoint));
+        _operations.ScheduleOperationRetry(operation);
+        break;
+      default: throw new Exception(string.Format("Unknown InspectionDecision: {0}", result.Decision));
+    }
+    if (_state == ConnectionState.Connected)
+      _operations.ScheduleWaitingOperations(connection);
+    }
+      else if (_subscriptions.TryGetActiveSubscription(package.CorrelationId, out subscription))
+    {
+      var result = subscription.Operation.InspectPackage(package);
+      LogDebug("HandleTcpPackage SUBSCRIPTION DECISION {0} ({1}), {2}", result.Decision, result.Description, subscription);
+      switch (result.Decision)
+      {
+        case InspectionDecision.DoNothing: break;
+        case InspectionDecision.EndOperation: 
+          _subscriptions.RemoveSubscription(subscription); 
+          break;
+        case InspectionDecision.Retry: 
+          _subscriptions.ScheduleSubscriptionRetry(subscription); 
+          break;
+        case InspectionDecision.Reconnect:
+          ReconnectTo(new NodeEndPoints(result.TcpEndPoint, result.SecureTcpEndPoint));
+          _subscriptions.ScheduleSubscriptionRetry(subscription);
+          break;
+        case InspectionDecision.Subscribed:
+          subscription.IsSubscribed = true;
+          break;
+        default: throw new Exception(string.Format("Unknown InspectionDecision: {0}", result.Decision));
+      }
+    }
+    else
+    {
+      LogDebug("HandleTcpPackage UNMAPPED PACKAGE with CorrelationId {0:B}, Command: {1}", package.CorrelationId, package.Command);
+    }
+    */
+}
+
 var startConnectionHandlers = {
 			Init: function(endpointDiscoverer, cb) {
 				this._endpointDiscoverer = endpointDiscoverer
@@ -424,12 +559,46 @@ var timerTickHandlers = {
 			Init: noOp
 		, Connecting: function() {
 			console.log(this._connectingPhase, this._connectionState)
-				if(this._connectingPhase === connectingPhase.Reconnecting) {
-					LogDebug('Timer Tick Reconnecting')
-					this._discoverEndpoint(function() { console.log(arguments)})
-				}
+			/* TODO:
+			if (_connectingPhase === ConnectingPhase.Reconnecting) { // && this._stopwatch.read() - _reconnInfo.TimeStamp >= _settings.ReconnectionDelay) {
+        LogDebug("TimerTick checking reconnection...")
+
+        this._reconnInfo = new ReconnectionInfo(_reconnInfo.ReconnectionAttempt + 1, this._stopwatch.read())
+        if(_settings.MaxReconnections >= 0 && _reconnInfo.ReconnectionAttempt > _settings.MaxReconnections) {
+          this._closeConnection('Reconnection limit reached.')
+        } else {
+          this.emit('reconnecting')
+          this._discoverEndpoint(noOp)
+        }
+      }
+      */
+
+      /* TODO: 
+      if(_connectingPhase === ConnectingPhase.Authentication) { //&& this._stopwatch.read() - _authInfo.TimeStamp >= _settings.OperationTimeout) {
+        RaiseAuthenticationFailed("Authentication timed out.")
+        GoToConnectedState()
+      }
+      */
+
+	      if(_connectingPhase > connectingPhase.ConnectionEstablishing) {
+	        this._manageHeartbeats()
+	      }
 			}
-		, Connected: noOp
+		, Connected: function() {
+			/* TODO:
+				// operations timeouts are checked only if connection is established and check period time passed
+        if (this._stopwatch.read() - _lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
+          // On mono even impossible connection first says that it is established
+          // so clearing of reconnection count on ConnectionEstablished event causes infinite reconnections.
+          // So we reset reconnection count to zero on each timeout check period when connection is established
+          _reconnInfo = new ReconnectionInfo(0, this._stopwatch.read())
+          _operations.CheckTimeoutsAndRetry(_connection)
+          _subscriptions.CheckTimeoutsAndRetry(_connection)
+          _lastTimeoutsTimeStamp = this._stopwatch.read()
+        }
+        */
+        this._manageHeartbeats()
+			}
 		, Closed: noOp
 		}
 
@@ -441,4 +610,10 @@ var connectingPhase = {
 , ConnectionEstablishing: 3
 , Authentication: 4
 , Connected: 5
+}
+
+function HeartbeatInfo(lastPackageNumber, isIntervalStage, timeStamp) {
+	Object.defineProperty(this, 'LastPackageNumber', { value: lastPackageNumber })
+	Object.defineProperty(this, 'IsIntervalStage', { value: isIntervalStage })
+	Object.defineProperty(this, 'TimeStamp', { value: timeStamp })
 }
