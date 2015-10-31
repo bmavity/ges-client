@@ -7,6 +7,7 @@ var util = require('util')
 	, systemStreams = require('./systemStreams')
 	, eventData = require('../eventData')
 	, eventNumber = require('./eventNumber')
+	, operations = require('./operations')
 	, systemEventTypes = require('./systemEventTypes')
 	, streamMetadata = require('./streamMetadata')
 	, streamMetadataResult = require('./streamMetadataResult')
@@ -65,13 +66,12 @@ function EsTcpConnection(endpointDiscoverer) {
 util.inherits(EsTcpConnection, EventEmitter)
 
 EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
-	this.enqueueOperation({
-		name: 'AppendToStream'
-	, stream: stream
+	this.enqueueOperation(operations.appendToStream({
+	  stream: stream
 	, auth: appendData.auth
 	, data: appendData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.startTransaction = function(stream, transactionData, cb) {
@@ -134,10 +134,8 @@ EsTcpConnection.prototype.connect = function() {
 }
 
 EsTcpConnection.prototype.enqueueOperation = function(operationData) {
-	this._handler.enqueueMessage({
-		name: 'StartOperation'
-	, data: operationData
-	})
+	console.log(operationData)
+	this._handler.enqueueMessage(messages.startOperation(operationData, 0, 10000))
 }
 
 EsTcpConnection.prototype.isInState = function(stateName) {
@@ -216,13 +214,12 @@ EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, c
 		return
 	}
 
-	this.enqueueOperation({
-		name: 'ReadStreamEventsForward'
-	, stream: stream
+	this.enqueueOperation(operations.readStreamEventsForward({
+	  stream: stream
 	, auth: readData.auth
 	, data: readData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.setStreamMetadata = function(stream, setData, cb) {
@@ -230,16 +227,11 @@ EsTcpConnection.prototype.setStreamMetadata = function(stream, setData, cb) {
 		, metadata = Buffer.isBuffer(rawMetadata) ? rawMetadata : new Buffer(rawMetadata.toJSON())
 		, metaevent = eventData(uuid.v4(), systemEventTypes.streamMetadata, true, metadata)
 		, appendData = {
-				expectedVersion: setData.expectedMetastreamVersion
+				auth: setData.auth
+			, expectedVersion: setData.expectedMetastreamVersion
 			, events: [ metaevent ]
 			}
-	this.enqueueOperation({
-		name: 'AppendToStream'
-	, stream: systemStreams.metastreamOf(stream)
-	, auth: setData.auth
-	, data: appendData
-	, cb: cb
-	})
+	this.appendToStream(systemStreams.metastreamOf(stream), appendData, cb)
 }
 
 EsTcpConnection.prototype.getStreamMetadata = function(stream, getData, cb) {

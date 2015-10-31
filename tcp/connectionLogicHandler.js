@@ -1,8 +1,10 @@
 var tcpPackageConnection = require('./tcpPackageConnection')
 	, operationsManager = require('./operationsManager')
+	, operations = require ('./operations')
 	, subscriptionsManager = require('./subscriptionsManager')
 	, createQueue = require('./simpleQueuedHandler')
 	, messages = require('./messages')
+	, inspection = require('./inspection')
 	, ensure = require('../ensure')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
@@ -10,82 +12,38 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 	, Stopwatch = require('statman-stopwatch')
 	, states = {
 			Init: {
-			  StartOperation: raiseNotActive
-			, StartSubscription: raiseNotActive
+			  StartSubscription: function() {
+			  	throw new Error('Connection is not active')
+			  }
 			}
 		, Connecting: {
-			  StartOperation: function(operation, cb) {
-					this._operations.enqueueOperation(operation, cb)
-				}
-			, StartSubscription: function(message) {
+			  StartSubscription: function(message) {
 					this._subscriptions.enqueueSubscription(message)
 				}
 			}
 		, Connected: {
-			  StartOperation: function(operation) {
-					this._operations.scheduleOperation(operation, this._connection)
-				}
-			, StartSubscription: function(message) {
+			  StartSubscription: function(message) {
 					this._subscriptions.scheduleSubscription(message, this._connection)
 				}
 			}
 		, Closed: {
-			  StartOperation: raiseClosed
-			, StartSubscription: raiseClosed
+			  StartSubscription: function(operation) {
+					operation.cb(new Error('EventStoreConnection has been closed.'))
+				}
 			}
 		}
 
 
 function LogDebug(message) {
-	//console.log(message)
+	console.log(message)
 }
 
 function LogInfo(message) {
-	//console.log(message)
+	console.log(message)
 }
 
 module.exports = EsConnectionLogicHandler
 
-
-function handlePackage(message) {
-	if(this._connection !== message.connection) return noOp()
-
-	var messageName = message.package.messageName
-		, correlationId = message.package.correlationId
-
-	if(messageName === 'HeartbeatResponseCommand') {
-		console.log(message.package)
-		return
-	}
-
-	if(messageName === 'HeartbeatRequestCommand') {
-		this._connection.enqueueSend({
-				messageName: 'HeartbeatResponseCommand'
-			, correlationId: correlationId
-		})
-		return
-	}
-	
-	var operation = this._operations.getActiveOperation(correlationId)
-	if(operation) {
-		operation.finish(message.package)
-		return
-	}
-
-	var subscription = this._subscriptions.getActiveSubscription(correlationId)
-	if(subscription) {
-		subscription.finish(message.package)
-		return
-	}
-}
-
-function raiseClosed(operation) {
-	operation.cb(new Error('EventStoreConnection has been closed.'))
-}
-
-function raiseNotActive(operation, cb) {
-	operation.cb(new Error('EventStoreConnection is not active.'))
-}
 
 function noOp(message, cb) {
 	cb && cb(null)
@@ -105,6 +63,8 @@ function EsConnectionLogicHandler() {
 
 	this._queue.registerHandler('StartConnection', function(msg) { me._startConnection(msg.endpointDiscoverer, msg.cb) })
 	this._queue.registerHandler('CloseConnection', function(msg) { me._closeConnection(msg.reason, msg.exception) })
+
+	this._queue.registerHandler('StartOperation', function(msg) { me._startOperation(msg.operation, msg.maxRetries, msg.timeout) })
 
 	this._queue.registerHandler('EstablishTcpConnection', function(msg) { me._establishTcpConnection(msg.endpoints) })
 	this._queue.registerHandler('TcpConnectionEstablished', function(msg) { me._tcpConnectionEstablished(msg.connection) })
@@ -144,6 +104,7 @@ EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
 	if(message.type) {
 		this._queue.enqueueMessage(message)
 	} else {
+		console.log(message)
 		this._queuedMessages.push(message)
 
 		setImmediate(function() {
@@ -165,6 +126,7 @@ EsConnectionLogicHandler.prototype.isInState = function(stateName) {
 	return this._state === states[stateName]
 }
 
+// BLM: THIS IS GETTING CALLED AND NEEDS TO BE REMOVED
 EsConnectionLogicHandler.prototype._processNextMessage = function() {
 	var me = this
 		, next = this._queuedMessages.shift()
@@ -342,6 +304,11 @@ EsConnectionLogicHandler.prototype._startConnection = function(endpointDiscovere
 		.call(this, endpointDiscoverer, cb)
 }
 
+EsConnectionLogicHandler.prototype._startOperation = function(operation, maxRetries, timeout) {
+	this._getStateMessageHandler(startOperationHandlers)
+		.call(this, operation, maxRetries, timeout)
+}
+
 EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
 	if(this._connectionState === 'Init') throw new Error()
   if(this._connectionState === 'Closed' || this._connection !== connection) {
@@ -447,7 +414,6 @@ var handleTcpPackageHandlers = {
 		}
 
 function handleTcpPackage(connection, package) {
-	console.log(package)
 	if(this._connection !== connection || this._connectionState === 'Closed' || this._connectionState === 'Init') {
     LogDebug("IGNORED: HandleTcpPackage connId {0}, package {1}, {2}.", connection.ConnectionId, package.Command, package.CorrelationId)
     return
@@ -479,6 +445,7 @@ function handleTcpPackage(connection, package) {
     }
   }
 
+  //BLM: Investigate if correlationId will be undefined or empty
   if(package.messageName === 'BadRequest' && package.correlationId === '00000000-0000-0000-0000-000000000000') {
     //string message = Helper.EatException(() => Helper.UTF8NoBom.GetString(package.Data.Array, package.Data.Offset, package.Data.Count))
     var exc = new Error('Bad request received from server. Error: {0}')
@@ -488,52 +455,53 @@ function handleTcpPackage(connection, package) {
     return
   }
 
-/*
-  OperationItem operation;
-  SubscriptionItem subscription;
-  if (_operations.TryGetActiveOperation(package.CorrelationId, out operation))
-  {
-    var result = operation.Operation.InspectPackage(package);
-    LogDebug("HandleTcpPackage OPERATION DECISION {0} ({1}), {2}", result.Decision, result.Description, operation);
-    switch (result.Decision)
-    {
-      case InspectionDecision.DoNothing: break; 
-      case InspectionDecision.EndOperation: 
-        _operations.RemoveOperation(operation); 
+  var operationItem = this._operations.getActiveOperation(package.correlationId)
+  if(operationItem) {
+    var result = operationItem.operation.inspectPackage(package);
+    if(!result) console.log('NO RESULT FROM INSPECTION: ' + operationItem.operation.responseType)
+    LogDebug('HandleTcpPackage OPERATION DECISION ' + result.decision + ' (' + result.description + '), '
+    	+ operationItem.toString())
+    switch (result.decision) {
+      case inspection.decision.DoNothing: break; 
+      case inspection.decision.EndOperation: 
+        this._operations.removeOperation(operationItem); 
         break;
-      case InspectionDecision.Retry: 
-        _operations.ScheduleOperationRetry(operation); 
+      case inspection.decision.Retry: 
+        _operations.scheduleOperationRetry(operation); 
         break;
-      case InspectionDecision.Reconnect:
+      case inspection.decision.Reconnect:
         ReconnectTo(new NodeEndPoints(result.TcpEndPoint, result.SecureTcpEndPoint));
-        _operations.ScheduleOperationRetry(operation);
+        _operations.scheduleOperationRetry(operation);
         break;
-      default: throw new Exception(string.Format("Unknown InspectionDecision: {0}", result.Decision));
+      default: throw new Exception(string.Format("Unknown inspection.decision: {0}", result.Decision));
     }
-    if (_state == ConnectionState.Connected)
-      _operations.ScheduleWaitingOperations(connection);
+
+    if(this._connectionState === 'Connected') {
+      this._operations.scheduleWaitingOperations(connection);
     }
+  }
+  /*
       else if (_subscriptions.TryGetActiveSubscription(package.CorrelationId, out subscription))
     {
       var result = subscription.Operation.InspectPackage(package);
       LogDebug("HandleTcpPackage SUBSCRIPTION DECISION {0} ({1}), {2}", result.Decision, result.Description, subscription);
       switch (result.Decision)
       {
-        case InspectionDecision.DoNothing: break;
-        case InspectionDecision.EndOperation: 
+        case inspection.decision.DoNothing: break;
+        case inspection.decision.EndOperation: 
           _subscriptions.RemoveSubscription(subscription); 
           break;
-        case InspectionDecision.Retry: 
+        case inspection.decision.Retry: 
           _subscriptions.ScheduleSubscriptionRetry(subscription); 
           break;
-        case InspectionDecision.Reconnect:
+        case inspection.decision.Reconnect:
           ReconnectTo(new NodeEndPoints(result.TcpEndPoint, result.SecureTcpEndPoint));
           _subscriptions.ScheduleSubscriptionRetry(subscription);
           break;
-        case InspectionDecision.Subscribed:
+        case inspection.decision.Subscribed:
           subscription.IsSubscribed = true;
           break;
-        default: throw new Exception(string.Format("Unknown InspectionDecision: {0}", result.Decision));
+        default: throw new Exception(string.Format("Unknown inspection.decision: {0}", result.Decision));
       }
     }
     else
@@ -553,6 +521,24 @@ var startConnectionHandlers = {
 		, Connecting: noOp
 		, Connected: noOp
 		, Closed: noOp
+		}
+
+var startOperationHandlers = {
+			Init: function(operation, maxRetries, timeout) {
+				operation.fail(new Error('EventStoreConnection is not active.'))
+			}
+		, Connecting: function(operation, maxRetries, timeout) {
+				// TODO:
+				LogDebug("StartOperation enqueue {0}, {1}, {2}, {3}.", operation, maxRetries, timeout);
+				this._operations.enqueueOperation(operationsManager.item(operation, maxRetries, timeout, this._operations), function() { console.log(arguments)})
+			}
+		, Connected: function(operation, maxRetries, timeout) {
+				LogDebug('StartOperation schedule ' + operation.toString() + ', ' + maxRetries + ', ' + timeout + '.')
+				this._operations.scheduleOperation(operationsManager.item(operation, maxRetries, timeout, this._operations), this._connection)
+			}
+		, Closed: function(operation, maxRetries, timeout) {
+				operation.fail(new Error('EventStoreConnection has been closed ', this._esConnection.name))
+			}
 		}
 
 var timerTickHandlers = {

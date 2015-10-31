@@ -1,3 +1,4 @@
+var ensure = require('../ensure')
 
 module.exports = {
 	closeConnection: function(reason, exception) {
@@ -11,6 +12,9 @@ module.exports = {
 	}
 , startConnection: function(endpointDiscoverer, cb) {
 		return new StartConnection(endpointDiscoverer, cb)
+	}
+, startOperation: function(operation, maxRetries, timeout) {
+		return new StartOperation(operation, maxRetries, timeout)
 	}
 , tcpConnectionEstablished: function(connection) {
 		return new TcpConnectionEstablished(connection)
@@ -46,6 +50,19 @@ function StartConnection(endpointDiscoverer, cb) {
 		endpointDiscoverer: endpointDiscoverer
 	, cb: cb
 	}
+}
+
+function StartOperation(operation, maxRetries, timeout) {
+	ensure.exists(operation, 'operation')
+
+	Object.defineProperty(this, 'type', { value: 'StartOperation' })
+	Object.defineProperty(this, 'payload', {
+		value: {
+			operation: operation
+		, maxRetries: maxRetries
+		, timeout: timeout
+		}
+	})
 }
 
 function TcpConnectionEstablished(connection) {
