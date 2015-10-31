@@ -5,6 +5,7 @@ module.exports.OperationBase = OperationBase
 
 
 function OperationBase(operationData) {
+	Object.defineProperty(this, 'userCredentials', { value: operationData.auth })
 	Object.defineProperty(this, '_cb', { value: operationData.cb })
 
 	this._completed = false
@@ -53,7 +54,6 @@ OperationBase.prototype.inspectNotAuthenticated = function(package) {
 
 OperationBase.prototype.inspectBadRequest = function(package) {
 	var message = package.payload.toString('UTF8') || '<no message>'
-	console.log('message: ' + message)
 	this.fail(new Error(message))
   return new inspection(inspection.decision.EndOperation, 'BadRequest - ' + message)
 }

@@ -11,7 +11,6 @@ var util = require('util')
 	, systemEventTypes = require('./systemEventTypes')
 	, streamMetadata = require('./streamMetadata')
 	, streamMetadataResult = require('./streamMetadataResult')
-	, transaction = require('./transaction')
 	, endpointDiscoverer = require('./staticEndpointDiscoverer')
 	, messages = require('./messages')
 
@@ -77,35 +76,29 @@ EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
 EsTcpConnection.prototype.startTransaction = function(stream, transactionData, cb) {
 	var auth = transactionData.auth
 		, me = this
-	this.enqueueOperation({
-		name: 'StartTransaction'
-	, stream: stream
+	this.enqueueOperation(operations.startTransaction({
+	  stream: stream
 	, auth: auth
 	, data: transactionData
-	, cb: function(err, result) {
-			if(err) return cb(err)
-
-			cb(null, transaction(result.TransactionId, auth, me))
-		}
-	})
+	, connection: me
+	, cb: cb
+	}))
 }
 
 EsTcpConnection.prototype.transactionalWrite = function(writeData, cb) {
-	this.enqueueOperation({
-		name: 'TransactionalWrite'
-	, auth: writeData.auth
+	this.enqueueOperation(operations.transactionalWrite({
+	  auth: writeData.auth
 	, data: writeData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.commitTransaction = function(commitData, cb) {
-	this.enqueueOperation({
-		name: 'CommitTransaction'
-	, auth: commitData.auth
+	this.enqueueOperation(operations.commitTransaction({
+	  auth: commitData.auth
 	, data: commitData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.deleteStream = function(stream, deleteData, cb) {
