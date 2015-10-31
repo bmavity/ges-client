@@ -91,6 +91,10 @@ function OperationItem(operation, maxRetries, timeout) {
 }
 
 OperationItem.prototype.toTcpMessage = function() {
+	if(!this.operation.toRequestPayload) {
+		console.log(this.operation)
+		throw new Error('Time to migrate: ' + this.operation.name)
+	}
 	return {
 		messageName: this.operation.requestMessage
 	, correlationId: this.correlationId

@@ -1,4 +1,4 @@
-var ensure = require('../ensure')
+var ensure = require('../../ensure')
 	, inspectionDecision = Object.create(Object.prototype, {
 			DoNothing: { value: 0 }
 		, EndOperation: { value: 1 }

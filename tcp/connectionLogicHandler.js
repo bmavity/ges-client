@@ -1,10 +1,10 @@
 var tcpPackageConnection = require('./tcpPackageConnection')
 	, operationsManager = require('./operationsManager')
 	, operations = require ('./operations')
+	, inspection = operations.inspection
 	, subscriptionsManager = require('./subscriptionsManager')
 	, createQueue = require('./simpleQueuedHandler')
 	, messages = require('./messages')
-	, inspection = require('./inspection')
 	, ensure = require('../ensure')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
