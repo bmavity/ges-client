@@ -6,7 +6,7 @@ module.exports = OperationsManager
 module.exports.item = OperationItem
 
 function LogDebug(msg) {
-	console.log(msg)
+	//console.log(msg)
 }
 
 
@@ -23,6 +23,10 @@ function OperationsManager() {
 	this._settings = {
 		maxConcurrentItems: 1000
 	}
+}
+
+OperationsManager.prototype.cleanUp = function() {
+	console.log('CLEANING UP')
 }
 
 OperationsManager.prototype.completeActiveOperation = function(correlationId) {

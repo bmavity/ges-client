@@ -109,24 +109,17 @@ EsTcpConnection.prototype.commitTransaction = function(commitData, cb) {
 }
 
 EsTcpConnection.prototype.deleteStream = function(stream, deleteData, cb) {
-	this.enqueueOperation({
-		name: 'DeleteStream'
-	, stream: stream
+	this.enqueueOperation(operations.deleteStream({
+	  stream: stream
 	, auth: deleteData.auth
 	, data: deleteData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.close = function(cb) {
-	this._handler.enqueueMessage({
-		name: 'CloseConnection'
-	, data: {
-			reason: 'Connection close requested by client.'
-		, exception: null
-		}
-	, cb: cb
-	})
+	this._handler.enqueueMessage(messages.closeConnection('Connection close requested by client.', null))
+	this._handler.once('closed', cb)
 }
 
 EsTcpConnection.prototype.connect = function() {
@@ -134,7 +127,6 @@ EsTcpConnection.prototype.connect = function() {
 }
 
 EsTcpConnection.prototype.enqueueOperation = function(operationData) {
-	console.log(operationData)
 	this._handler.enqueueMessage(messages.startOperation(operationData, 0, 10000))
 }
 

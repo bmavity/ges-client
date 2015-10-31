@@ -7,6 +7,7 @@ var uuid = require('node-uuid')
 
 module.exports = {
 	appendToStream: AppendToStream
+, deleteStream: DeleteStream
 , readStreamEventsForward: ReadStreamEventsForward
 }
 
@@ -104,6 +105,10 @@ OperationBase.prototype.inspectUnexpectedCommand = function(package, expectedCom
             */
 }
 
+OperationBase.prototype._serialize = function(messageData) {
+	return messageParser.serialize(this.requestType, messageData)
+}
+
 OperationBase.prototype.succeed = function() {
 	if(this._completed) return
 
@@ -175,7 +180,7 @@ util.inherits(AppendToStream, OperationBase)
 
 AppendToStream.prototype.toRequestPayload = function() {
 	var events = !this._events ? [] : Array.isArray(this._events) ? this._events : [ this._events ]
-	return messageParser.serialize(this.requestType, {
+	return this._serialize({
 		eventStreamId: this._stream
 	, expectedVersion: this._expectedVersion
 	, events: events.map(eventPayloads.toEventStoreEvent)
@@ -195,6 +200,107 @@ AppendToStream.prototype.transformResponse = function(payload) {
 }
 
 AppendToStream.prototype.toString = function() {
+	return 'Stream: ' + this._stream + ', ExpectedVersion: ' + this._expectedVersion
+}
+
+
+
+
+function DeleteStream(operationData) {
+	if(!(this instanceof DeleteStream)) {
+		return new DeleteStream(operationData)
+	}
+	OperationBase.call(this, operationData)
+
+	var bla = function(operationData) {
+		return {
+		  auth: operationData.auth
+		, cb: operationData.cb
+		, requestType: 'DeleteStream'
+		, toRequestPayload: function() {
+				var payload = operationData.data
+				return messageParser.serialize('DeleteStream', {
+					eventStreamId: operationData.stream
+				, expectedVersion: payload.expectedVersion
+				, requireMaster: !!payload.requireMaster
+				, hardDelete: !!payload.hardDelete
+				})
+			}
+		, responseType: 'DeleteStreamCompleted'
+		, toResponseObject: function(payload) {
+			  return {
+			  	Status: payload.result
+			  , LogPosition: position(payload)
+				}
+			}
+		}
+	}
+
+	Object.defineProperty(this, 'requestMessage', { value: 'DeleteStream' })
+	Object.defineProperty(this, 'requestType', { value: 'DeleteStream' })
+	Object.defineProperty(this, 'responseMessage', { value: 'DeleteStreamCompleted' })
+	Object.defineProperty(this, 'responseType', { value: 'DeleteStreamCompleted' })
+
+	Object.defineProperty(this, '_stream', { value: operationData.stream })
+	Object.defineProperty(this, '_requireMaster', { value: !!operationData.requireMaster })
+
+	Object.defineProperty(this, '_expectedVersion', { value: operationData.data.expectedVersion })
+	Object.defineProperty(this, '_hardDelete', { value: operationData.data.hardDelete })
+
+	this._inspections = {
+		Success: function(response) {
+			this.succeed()
+			return inspection(inspection.decision.EndOperation, 'Success')
+		}
+	, PrepareTimeout: function(response) {
+      return new inspection(inspection.decision.Retry, 'PrepareTimeout')
+    }
+  , ForwardTimeout: function(response) {
+      return new inspection(inspection.decision.Retry, 'ForwardTimeout')
+    }
+  , CommitTimeout: function(response) {
+      this._wasCommitTimeout = true
+      return new inspection(inspection.decision.Retry, 'CommitTimeout')
+    }
+  , WrongExpectedVersion: function(response) {
+      var err = 'Delete stream due to WrongExpectedVersion. Stream: ' + this._stream
+      	+ ', Expected version: ' + this._expectedVersion
+      this.fail(new Error(err))
+      return new inspection(inspection.decision.EndOperation, 'WrongExpectedVersion')
+    }
+  , StreamDeleted: function(response) {
+      this.fail(new Error(this._stream))
+      return new inspection(inspection.decision.EndOperation, 'StreamDeleted')
+    }
+  , InvalidTransaction: function() {
+      this.fail(new Error('Invalid Transaction'))
+      return new inspection(inspection.decision.EndOperation, 'InvalidTransaction')
+    }
+  , AccessDenied: function(response) {
+      this.fail(new Error('Delete access denied for stream ' + this._stream + '.'))
+      return new inspection(inspection.decision.EndOperation, 'AccessDenied')
+    }
+	}
+}
+util.inherits(DeleteStream, OperationBase)
+
+DeleteStream.prototype.toRequestPayload = function() {
+	return this._serialize({
+		eventStreamId: this._stream
+	, expectedVersion: this._expectedVersion
+	, requireMaster: !!this._requireMaster
+	, hardDelete: !!this._hardDelete
+	})
+}
+	
+DeleteStream.prototype.transformResponse = function(payload) {
+	return {
+  	Status: payload.result
+  , LogPosition: position(payload)
+	}
+}
+
+DeleteStream.prototype.toString = function() {
 	return 'Stream: ' + this._stream + ', ExpectedVersion: ' + this._expectedVersion
 }
 
@@ -250,7 +356,7 @@ function ReadStreamEventsForward(operationData) {
 util.inherits(ReadStreamEventsForward, OperationBase)
 
 ReadStreamEventsForward.prototype.toRequestPayload = function() {
-	return messageParser.serialize(this.requestType, {
+	return this._serialize({
 		eventStreamId: this._stream
 	, fromEventNumber: this._fromEventNumber
 	, maxCount: this._maxCount
@@ -271,41 +377,18 @@ ReadStreamEventsForward.prototype.transformResponse = function(payload) {
 }
 
 ReadStreamEventsForward.prototype.toString = function() {
-	return 'Stream: ' + this._stream + ', ExpectedVersion: ' + this._expectedVersion
+	return 'Stream: ' + this._stream
+				+ ', FromEventNumber: ' + this._fromEventNumber
+				+ ', MaxCount: ' + this._maxCount
+				+ ', ResolveLinkTos: ' + this._resolveLinkTos
+				+ ', RequireMaster: ' + this._requireMaster
 }
 
 
 
-
-
-
-
-
 var operations = {
-	DeleteStream: function(operationData) {
-		return {
-		  auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'DeleteStream'
-		, toRequestPayload: function() {
-				var payload = operationData.data
-				return messageParser.serialize('DeleteStream', {
-					eventStreamId: operationData.stream
-				, expectedVersion: payload.expectedVersion
-				, requireMaster: !!payload.requireMaster
-				, hardDelete: !!payload.hardDelete
-				})
-			}
-		, responseType: 'DeleteStreamCompleted'
-		, toResponseObject: function(payload) {
-			  return {
-			  	Status: payload.result
-			  , LogPosition: position(payload)
-				}
-			}
-		}
-	}
-, ReadAllEventsBackward: function(operationData) {
+	
+ReadAllEventsBackward: function(operationData) {
 		return {
 			auth: operationData.auth
 		, cb: operationData.cb

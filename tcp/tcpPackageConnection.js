@@ -51,7 +51,12 @@ function TcpPackageConnection(opts) {
 util.inherits(TcpPackageConnection, EventEmitter)
 
 
+TcpPackageConnection.prototype.cleanup = function() {
+	this.removeAllListeners()
+}
+
 TcpPackageConnection.prototype.close = function(reason, cb) {
+	//BLM: TODO - Compare this to C#
 	this._closeCallbacks.push(cb)
 	this._socket.destroy()
 }

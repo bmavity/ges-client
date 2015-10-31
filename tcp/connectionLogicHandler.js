@@ -23,7 +23,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 			}
 		, Connected: {
 			  StartSubscription: function(message) {
-					this._subscriptions.scheduleSubscription(message, this._connection)
+					this._subscriptions.scheduleSubscription(message, this._tcpConnection)
 				}
 			}
 		, Closed: {
@@ -35,11 +35,11 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 
 
 function LogDebug(message) {
-	console.log(message)
+	//console.log(message)
 }
 
 function LogInfo(message) {
-	console.log(message)
+	//console.log(message)
 }
 
 module.exports = EsConnectionLogicHandler
@@ -74,7 +74,7 @@ function EsConnectionLogicHandler() {
 
 	this._handlers = {}
 
-	this._connection = null
+	this._tcpConnection = null
 	this._endPoint = null
 	this._state = null
 
@@ -84,7 +84,7 @@ function EsConnectionLogicHandler() {
 
 	this._setState('Init')
 
-	this._connectionState = 'Init'
+	this._tcpConnectionState = 'Init'
 	this._connectingPhase = connectingPhase.Invalid
 	this._wasConnected = false
 	this._packageNumber = 0
@@ -104,12 +104,10 @@ EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
 	if(message.type) {
 		this._queue.enqueueMessage(message)
 	} else {
-		console.log(message)
+	console.log(message)
 		this._queuedMessages.push(message)
 
-		setImmediate(function() {
-			me._processNextMessage()
-		})
+		me._processNextMessage()
 	}
 }
 
@@ -134,6 +132,10 @@ EsConnectionLogicHandler.prototype._processNextMessage = function() {
 	if(!next) return 
 	//if(!handler) return next.cb && next.cb(new Error())
 	var handler = this._state[next.name]
+	if(!handler) {
+		console.log('FAILURE TO UPDATE EVENT ', next)
+		throw new Error('Handler not available for ' + next.name) 
+	}
 	handler.call(this, next.data, next.cb)
 
 	setImmediate(function() {
@@ -147,39 +149,29 @@ EsConnectionLogicHandler.prototype._closeConnection = function(reason, exception
 }
 
 EsConnectionLogicHandler.prototype._closeTcpConnection = function(reason) {
-	if(this._connection === null) {
-    //TODO: 
-    LogDebug("CloseTcpConnection IGNORED because _connection == null");
-    return;
+	if(this._tcpConnection === null) {
+    LogDebug('CloseTcpConnection IGNORED because _tcpConnection is null');
+    return
   }
 
-  //TODO: 
-  LogDebug("CloseTcpConnection")
-  this._connection.Close(reason)
-  TcpConnectionClosed(this._connection)
-  this._connection = null
+  LogDebug('CloseTcpConnection')
 
 	var me = this
-	if(this._connection === null) return cb(null)
 
-	this._connection.close(reason, function(err) {
-		if(err) return cb(err)
-
-		if(this._connection) {
-			this._connection.removeAllListeners()
-			this._connection = null
-		}
-		cb(null)
+	this._tcpConnection.close(reason, function(err) {
+		me._tcpConnectionClosed(me._tcpConnection)
+		me._tcpConnection.cleanup()
+		me._tcpConnection = null
 	})
 }
 
 EsConnectionLogicHandler.prototype._discoverEndpoint = function(cb) {
-	if(this._connectionState !== 'Connecting') return cb()
+	if(this._tcpConnectionState !== 'Connecting') return cb()
 	if(this._connectingPhase !== connectingPhase.Reconnecting) return cb()
 
 	this._connectingPhase = connectingPhase.EndpointDiscovery
 	
-	var existingEndpoint = this._connection !== null ? this._connection.remoteEndpoint : null
+	var existingEndpoint = this._tcpConnection !== null ? this._tcpConnection.remoteEndpoint : null
 		, me = this
 
 	this._endpointDiscoverer.discover(existingEndpoint, function(err, endpoint) {
@@ -205,7 +197,7 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 	//TODO: 
 	LogDebug("EstablishTcpConnection to [" + endpoint.host + ':' + endpoint.port + "]")
 
-	if(this._connectionState !== 'Connecting') return
+	if(this._tcpConnectionState !== 'Connecting') return
 	if(this._connectingPhase !== connectingPhase.EndpointDiscovery) return
 
 	this._connectingPhase = connectingPhase.ConnectionEstablishing
@@ -223,15 +215,15 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 		me.enqueueMessage(messages.handleTcpPackage(data.connection, data.package))
 	})
 
-	this._connection = connection
+	this._tcpConnection = connection
 }
 
 EsConnectionLogicHandler.prototype._getStateMessageHandler = function(stateMessages) {
 	ensure.exists(stateMessages, 'stateMessages')
 
-	var handler = stateMessages[this._connectionState]
+	var handler = stateMessages[this._tcpConnectionState]
 	if(!handler) {
-		throw new Error('Unknown stage: ' + this._connectionState)
+		throw new Error('Unknown stage: ' + this._tcpConnectionState)
 	}
 	return handler
 }
@@ -242,19 +234,19 @@ EsConnectionLogicHandler.prototype._handleTcpPackage = function(connection, pack
 }
 
 EsConnectionLogicHandler.prototype._goToConnectedState = function() {
-	ensure.exists(this._connection, 'connection');
+	ensure.exists(this._tcpConnection, 'connection');
 
-  this._connectionState = 'Connected'
+  this._tcpConnectionState = 'Connected'
   this._connectingPhase = connectingPhase.Connected
 
   this._wasConnected = true
 
-  this.emit('connect', this._connection.RemoteEndPoint)
+  this.emit('connect', this._tcpConnection.RemoteEndPoint)
 
 /*
   if(this._stopwatch.read() - this._lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
-    this._operations.CheckTimeoutsAndRetry(_connection)
-    this._subscriptions.CheckTimeoutsAndRetry(_connection)
+    this._operations.CheckTimeoutsAndRetry(_tcpConnection)
+    this._subscriptions.CheckTimeoutsAndRetry(_tcpConnection)
     this._lastTimeoutsTimeStamp = this._stopwatch.read()
   }
 */
@@ -265,7 +257,7 @@ EsConnectionLogicHandler.prototype._isInPhase = function(connectingPhase) {
 }
 
 EsConnectionLogicHandler.prototype._manageHeartbeats = function() {
-	if(this._connection === null) throw new Error('Trying to process heartbeat message when connection is null.')
+	if(this._tcpConnection === null) throw new Error('Trying to process heartbeat message when connection is null.')
 
   var timeout = 2000 //this._heartbeatInfo.IsIntervalStage ? this._settings.HeartbeatInterval : this._settings.HeartbeatTimeout
   if(this._stopwatch.read() - this._heartbeatInfo.TimeStamp < timeout) return
@@ -278,7 +270,7 @@ EsConnectionLogicHandler.prototype._manageHeartbeats = function() {
 
   if(this._heartbeatInfo.IsIntervalStage) {
     // TcpMessage.Heartbeat analog
-    this._connection.enqueueSend({
+    this._tcpConnection.enqueueSend({
 			messageName: 'HeartbeatRequestCommand'
 		, correlationId: uuid.v4()
 		})
@@ -288,8 +280,8 @@ EsConnectionLogicHandler.prototype._manageHeartbeats = function() {
     // TODO:
     LogInfo("EventStoreConnection '{0}': closing TCP connection [{1}, L{2}, {3:B}] due to HEARTBEAT TIMEOUT at pkgNum {4}.")
     /*
-      _esConnection.ConnectionName, _connection.RemoteEndPoint, _connection.LocalEndPoint,
-      _connection.ConnectionId, packageNumber)
+      _esConnection.ConnectionName, _tcpConnection.RemoteEndPoint, _tcpConnection.LocalEndPoint,
+      _tcpConnection.ConnectionId, packageNumber)
 */
     this._closeTcpConnection("EventStoreConnection '{0}': closing TCP connection [{1}, L{2}, {3:B}] due to HEARTBEAT TIMEOUT at pkgNum {4}.")
 	} 
@@ -310,23 +302,23 @@ EsConnectionLogicHandler.prototype._startOperation = function(operation, maxRetr
 }
 
 EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
-	if(this._connectionState === 'Init') throw new Error()
-  if(this._connectionState === 'Closed' || this._connection !== connection) {
+	if(this._tcpConnectionState === 'Init') throw new Error()
+  if(this._tcpConnectionState === 'Closed' || this._tcpConnection !== connection) {
   	/* TODO: */
       LogDebug("IGNORED (_state: {0}, _conn.ID: {1:B}, conn.ID: {2:B}): TCP connection to [{3}, L{4}] closed.", 
-               this._connectionState, this._connection.ConnectionId, connection.ConnectionId, 
+               this._tcpConnectionState, this._tcpConnection.ConnectionId, connection.ConnectionId, 
                connection.RemoteEndPoint, connection.LocalEndPoint)
     
     return
   }
 
-  this._connectionState = 'Connecting'
+  this._tcpConnectionState = 'Connecting'
   this._connectingPhase = connectingPhase.Reconnecting
 
   //TODO: 
   LogDebug("TCP connection to [{0}, L{1}, {2:B}] closed.", connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
 
-  //this._subscriptions.PurgeSubscribedAndDroppedSubscriptions(_connection.ConnectionId);
+  //this._subscriptions.PurgeSubscribedAndDroppedSubscriptions(_tcpConnection.ConnectionId);
   this._reconnInfo = {
   	reconnectionAttempt: _reconnInfo.ReconnectionAttempt
   , timeStamp: this._stopwatch.read()
@@ -339,10 +331,10 @@ EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
 }
 
 EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connection) {
-	if(this._connectionState !== 'Connecting' || this._connection !== connection || connection.isClosed) {
+	if(this._tcpConnectionState !== 'Connecting' || this._tcpConnection !== connection || connection.isClosed) {
 		/* TODO: */
     LogDebug("IGNORED (_state {0}, _conn.Id {1:B}, conn.Id {2:B}, conn.closed {3}): TCP connection to [{4}, L{5}] established.", 
-    	this._connectionState, this._connection.ConnectionId, connection.ConnectionId, 
+    	this._tcpConnectionState, this._tcpConnection.ConnectionId, connection.ConnectionId, 
      	connection.IsClosed, connection.RemoteEndPoint, connection.LocalEndPoint);
     
     return
@@ -357,7 +349,7 @@ EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connecti
 
 /*
     _authInfo = new AuthInfo(Guid.NewGuid(), this._stopwatch.read());
-    _connection.EnqueueSend(new TcpPackage('Authenticate,
+    _tcpConnection.EnqueueSend(new TcpPackage('Authenticate,
                                              TcpFlags.Authenticated,
                                              _authInfo.CorrelationId,
                                              _settings.DefaultUserCredentials.Username,
@@ -386,13 +378,12 @@ var closeConnectionHandlers = {
 		}
 
 function performCloseConnection(reason, exception) {
-	//TODO:
-	LogDebug("CloseConnection, reason {0}, exception {1}.", reason, exception);
+	LogDebug('CloseConnection, reason ' + reason + ', exception ' + exception + '.');
 
-	this._connectionState = 'Closed'
+	this._tcpConnectionState = 'Closed'
 
 	clearInterval(this._timer)
-	//this._operations.cleanUp()
+	this._operations.cleanUp()
 	//this._subscriptions.cleanUp()
 	this._closeTcpConnection(reason)
 
@@ -414,17 +405,17 @@ var handleTcpPackageHandlers = {
 		}
 
 function handleTcpPackage(connection, package) {
-	if(this._connection !== connection || this._connectionState === 'Closed' || this._connectionState === 'Init') {
+	if(this._tcpConnection !== connection || this._tcpConnectionState === 'Closed' || this._tcpConnectionState === 'Init') {
     LogDebug("IGNORED: HandleTcpPackage connId {0}, package {1}, {2}.", connection.ConnectionId, package.Command, package.CorrelationId)
     return
   }
             
-  LogDebug("HandleTcpPackage connId {0}, package {1}, {2}.", this._connection.ConnectionId, package.Command, package.CorrelationId)
+  LogDebug("HandleTcpPackage connId {0}, package {1}, {2}.", this._tcpConnection.ConnectionId, package.Command, package.CorrelationId)
   this._packageNumber += 1
 
   if(package.messageName === 'HeartbeatResponseCommand') return
   if(package.messageName === 'HeartbeatRequestCommand') {
-    this._connection.enqueueSend({
+    this._tcpConnection.enqueueSend({
     	messageName: 'HeartbeatResponseCommand'
   	, correlationId: package.correlationId
 	  })
@@ -432,7 +423,7 @@ function handleTcpPackage(connection, package) {
   }
 
   if(package.messageName === 'Authenticated' || package.messageName === 'NotAuthenticated') {
-    if(this._connectionState === 'Connecting' && this._connectingPhase === connectingPhase.Authentication) {
+    if(this._tcpConnectionState === 'Connecting' && this._connectingPhase === connectingPhase.Authentication) {
      	//&& _authInfo.CorrelationId === package.correlationId) {
 	/*
       if(package.Command == 'NotAuthenticated) {
@@ -458,7 +449,6 @@ function handleTcpPackage(connection, package) {
   var operationItem = this._operations.getActiveOperation(package.correlationId)
   if(operationItem) {
     var result = operationItem.operation.inspectPackage(package);
-    if(!result) console.log('NO RESULT FROM INSPECTION: ' + operationItem.operation.responseType)
     LogDebug('HandleTcpPackage OPERATION DECISION ' + result.decision + ' (' + result.description + '), '
     	+ operationItem.toString())
     switch (result.decision) {
@@ -476,7 +466,7 @@ function handleTcpPackage(connection, package) {
       default: throw new Exception(string.Format("Unknown inspection.decision: {0}", result.Decision));
     }
 
-    if(this._connectionState === 'Connected') {
+    if(this._tcpConnectionState === 'Connected') {
       this._operations.scheduleWaitingOperations(connection);
     }
   }
@@ -514,7 +504,7 @@ function handleTcpPackage(connection, package) {
 var startConnectionHandlers = {
 			Init: function(endpointDiscoverer, cb) {
 				this._endpointDiscoverer = endpointDiscoverer
-				this._connectionState = 'Connecting'
+				this._tcpConnectionState = 'Connecting'
 				this._connectingPhase = connectingPhase.Reconnecting
 				this._discoverEndpoint(cb)
 			}
@@ -534,7 +524,7 @@ var startOperationHandlers = {
 			}
 		, Connected: function(operation, maxRetries, timeout) {
 				LogDebug('StartOperation schedule ' + operation.toString() + ', ' + maxRetries + ', ' + timeout + '.')
-				this._operations.scheduleOperation(operationsManager.item(operation, maxRetries, timeout, this._operations), this._connection)
+				this._operations.scheduleOperation(operationsManager.item(operation, maxRetries, timeout, this._operations), this._tcpConnection)
 			}
 		, Closed: function(operation, maxRetries, timeout) {
 				operation.fail(new Error('EventStoreConnection has been closed ', this._esConnection.name))
@@ -544,7 +534,7 @@ var startOperationHandlers = {
 var timerTickHandlers = {
 			Init: noOp
 		, Connecting: function() {
-			console.log(this._connectingPhase, this._connectionState)
+			console.log(this._connectingPhase, this._tcpConnectionState)
 			/* TODO:
 			if (_connectingPhase === ConnectingPhase.Reconnecting) { // && this._stopwatch.read() - _reconnInfo.TimeStamp >= _settings.ReconnectionDelay) {
         LogDebug("TimerTick checking reconnection...")
@@ -578,8 +568,8 @@ var timerTickHandlers = {
           // so clearing of reconnection count on ConnectionEstablished event causes infinite reconnections.
           // So we reset reconnection count to zero on each timeout check period when connection is established
           _reconnInfo = new ReconnectionInfo(0, this._stopwatch.read())
-          _operations.CheckTimeoutsAndRetry(_connection)
-          _subscriptions.CheckTimeoutsAndRetry(_connection)
+          _operations.CheckTimeoutsAndRetry(_tcpConnection)
+          _subscriptions.CheckTimeoutsAndRetry(_tcpConnection)
           _lastTimeoutsTimeStamp = this._stopwatch.read()
         }
         */
