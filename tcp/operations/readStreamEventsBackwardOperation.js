@@ -14,37 +14,7 @@ function ReadStreamEventsForward(operationData) {
 	}
 	OperationBase.call(this, operationData)
 
-/*
-, ReadStreamEventsBackward: function(operationData) {
-		return {
-			auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'ReadStreamEventsBackward'
-		, toRequestPayload: function(payload) {
-				var payload = operationData.data
 
-				return messageParser.serialize('ReadStreamEvents', {
-					eventStreamId: operationData.stream
-				, fromEventNumber: payload.start
-				, maxCount: payload.count
-				, resolveLinkTos: !!payload.resolveLinkTos
-				, requireMaster: !!payload.requireMaster
-		  	})
-	  	}
-		, responseType: 'ReadStreamEventsCompleted'
-		, toResponseObject: function(payload) {
-				var events = payload.events || []
-				return {
-					Status: payload.result
-				, Events: events.map(eventPayloads.toResolvedEvent)
-				, NextEventNumber: payload.nextEventNumber
-				, LastEventNumber: payload.lastEventNumber
-				, IsEndOfStream: payload.isEndOfStream
-				}
-			}
-		}
-	}
-*/
 	Object.defineProperty(this, 'requestMessage', { value: 'ReadStreamEventsBackward' })
 	Object.defineProperty(this, 'requestType', { value: 'ReadStreamEvents' })
 	Object.defineProperty(this, 'responseMessage', { value: 'ReadStreamEventsBackwardCompleted' })
@@ -56,6 +26,7 @@ function ReadStreamEventsForward(operationData) {
 	Object.defineProperty(this, '_fromEventNumber', { value: operationData.data.start })
 	Object.defineProperty(this, '_maxCount', { value: operationData.data.count })
 	Object.defineProperty(this, '_resolveLinkTos', { value: !!operationData.data.resolveLinkTos })
+	
 
 	this._inspections = {
 		Success: function(response) {
