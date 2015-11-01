@@ -4,7 +4,6 @@ var util = require('util')
 	, eventPayloads = require('../eventPayloads')
 	, OperationBase = require('./operationBase').OperationBase
 
-
 module.exports = ReadEvent
 
 
@@ -14,34 +13,6 @@ function ReadEvent(operationData) {
 	}
 	OperationBase.call(this, operationData)
 
-/*43G
-	, ReadEvent: function(operationData) {
-		return {
-			auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'ReadEvent'
-		, toRequestPayload: function(payload) {
-				var payload = operationData.data
-
-				return messageParser.serialize('ReadEvent', {
-					eventStreamId: operationData.stream
-				, eventNumber: payload.eventNumber
-				, resolveLinkTos: !!payload.resolveLinkTos
-				, requireMaster: !!payload.requireMaster
-		  	})
-	  	}
-		, responseType: 'ReadEventCompleted'
-		, toResponseObject: function(payload) {
-				return {
-					Status: payload.result
-				, Event: payload.result === 'Success' ? eventPayloads.toResolvedEvent(payload.event) : null
-				, Stream: operationData.stream
-				, EventNumber: operationData.data.eventNumber
-				}
-			}
-		}
-	}
-	*/
 
 	Object.defineProperty(this, 'requestMessage', { value: 'ReadEvent' })
 	Object.defineProperty(this, 'requestType', { value: 'ReadEvent' })
@@ -53,6 +24,7 @@ function ReadEvent(operationData) {
 
 	Object.defineProperty(this, '_eventNumber', { value: operationData.data.eventNumber })
 	Object.defineProperty(this, '_resolveLinkTos', { value: !!operationData.data.resolveLinkTos })
+
 
 	this._inspections = {
 		Success: function(response) {
