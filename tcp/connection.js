@@ -176,13 +176,12 @@ EsTcpConnection.prototype.readStreamEventsBackward = function(stream, readData, 
 		return
 	}
 
-	this.enqueueOperation({
-		name: 'ReadStreamEventsBackward'
-	, stream: stream
+	this.enqueueOperation(operations.readStreamEventsBackward({
+	  stream: stream
 	, auth: readData.auth
 	, data: readData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.readStreamEventsForward = function(stream, readData, cb) {

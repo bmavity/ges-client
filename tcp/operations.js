@@ -8,6 +8,7 @@ module.exports = {
 	appendToStream: require('./operations/appendToStreamOperation')
 , commitTransaction: require('./operations/commitTransactionOperation')
 , deleteStream: require('./operations/deleteStreamOperation')
+, readStreamEventsBackward: require('./operations/readStreamEventsBackwardOperation')
 , readStreamEventsForward: require('./operations/readStreamEventsForwardOperation')
 , startTransaction: require('./operations/startTransactionOperation')
 , transactionalWrite: require('./operations/transactionalWriteOperation')
@@ -110,35 +111,7 @@ ReadAllEventsBackward: function(operationData) {
 			}
 		}
 	}
-, ReadStreamEventsBackward: function(operationData) {
-		return {
-			auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'ReadStreamEventsBackward'
-		, toRequestPayload: function(payload) {
-				var payload = operationData.data
 
-				return messageParser.serialize('ReadStreamEvents', {
-					eventStreamId: operationData.stream
-				, fromEventNumber: payload.start
-				, maxCount: payload.count
-				, resolveLinkTos: !!payload.resolveLinkTos
-				, requireMaster: !!payload.requireMaster
-		  	})
-	  	}
-		, responseType: 'ReadStreamEventsCompleted'
-		, toResponseObject: function(payload) {
-				var events = payload.events || []
-				return {
-					Status: payload.result
-				, Events: events.map(eventPayloads.toResolvedEvent)
-				, NextEventNumber: payload.nextEventNumber
-				, LastEventNumber: payload.lastEventNumber
-				, IsEndOfStream: payload.isEndOfStream
-				}
-			}
-		}
-	}
 
 
 }
