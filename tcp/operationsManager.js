@@ -99,7 +99,7 @@ OperationItem.prototype.toTcpMessage = function() {
 		messageName: this.operation.requestMessage
 	, correlationId: this.correlationId
 	, payload: this.operation.toRequestPayload()
-	, auth: this.operation.auth
+	, userCredentials: this.operation.userCredentials
 	}
 }
 

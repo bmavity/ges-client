@@ -62,7 +62,7 @@ TcpPackageConnection.prototype.close = function(reason, cb) {
 }
 
 TcpPackageConnection.prototype.enqueueSend = function(packetData) {
-	var packet = framer.frame(packetData.messageName, packetData.correlationId, packetData.payload, packetData.auth)
+	var packet = framer.frame(packetData.messageName, packetData.correlationId, packetData.payload, packetData.userCredentials)
 
 	this._socket.write(packet)
 }

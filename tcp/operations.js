@@ -1,13 +1,10 @@
-var uuid = require('node-uuid')
-	, util = require('util')
-	, messageParser = require('./messageParser')
-	, position = require('./position')
-	, eventPayloads = require('./eventPayloads')
 
 module.exports = {
 	appendToStream: require('./operations/appendToStreamOperation')
 , commitTransaction: require('./operations/commitTransactionOperation')
 , deleteStream: require('./operations/deleteStreamOperation')
+, readAllEventsBackward: require('./operations/readAllEventsBackwardOperation')
+, readAllEventsForward: require('./operations/readAllEventsForwardOperation')
 , readStreamEventsBackward: require('./operations/readStreamEventsBackwardOperation')
 , readEvent: require('./operations/readEventOperation')
 , readStreamEventsForward: require('./operations/readStreamEventsForwardOperation')
@@ -15,79 +12,4 @@ module.exports = {
 , transactionalWrite: require('./operations/transactionalWriteOperation')
 
 , inspection: require('./operations/inspection')
-}
-
-
-
-
-var operations = {
-	
-ReadAllEventsBackward: function(operationData) {
-		return {
-			auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'ReadAllEventsBackward'
-		, toRequestPayload: function(payload) {
-				var payload = operationData.data
-
-				return messageParser.serialize('ReadAllEvents', {
-					commitPosition: payload.position.commitPosition
-				, preparePosition: payload.position.preparePosition
-				, maxCount: payload.maxCount
-				, resolveLinkTos: !!payload.resolveLinkTos
-				, requireMaster: !!payload.requireMaster
-		  	})
-	  	}
-		, responseType: 'ReadAllEventsCompleted'
-		, toResponseObject: function(payload) {
-				var events = payload.events || []
-				return {
-					Status: payload.result
-				, Events: events.map(eventPayloads.toResolvedEvent)
-				, IsEndOfStream: events.length === 0
-				, OriginalPosition: position(payload)
-				, NextPosition: position({
-						commitPosition: payload.nextCommitPosition
-					, preparePosition: payload.nextPreparePosition
-					})
-				}
-			}
-		}
-	}
-, ReadAllEventsForward: function(operationData) {
-		return {
-			auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'ReadAllEventsForward'
-		, toRequestPayload: function(payload) {
-				var payload = operationData.data
-
-				return messageParser.serialize('ReadAllEvents', {
-					commitPosition: payload.position.commitPosition
-				, preparePosition: payload.position.preparePosition
-				, maxCount: payload.maxCount
-				, resolveLinkTos: !!payload.resolveLinkTos
-				, requireMaster: !!payload.requireMaster
-		  	})
-	  	}
-		, responseType: 'ReadAllEventsCompleted'
-		, toResponseObject: function(payload) {
-				var events = payload.events || []
-				return {
-					Status: payload.result
-				, Events: events.map(eventPayloads.toResolvedEvent)
-				, IsEndOfStream: events.length === 0
-				, OriginalPosition: position(payload)
-				, NextPosition: position({
-						commitPosition: payload.nextCommitPosition
-					, preparePosition: payload.nextPreparePosition
-					})
-				}
-			}
-		}
-	}
-
-
-
-
 }

@@ -128,21 +128,19 @@ EsTcpConnection.prototype.isInState = function(stateName) {
 }
 
 EsTcpConnection.prototype.readAllEventsBackward = function(readData, cb) {
-	this.enqueueOperation({
-		name: 'ReadAllEventsBackward'
-	, auth: readData.auth
+	this.enqueueOperation(operations.readAllEventsBackward({
+	  auth: readData.auth
 	, data: readData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.readAllEventsForward = function(readData, cb) {
-	this.enqueueOperation({
-		name: 'ReadAllEventsForward'
-	, auth: readData.auth
+	this.enqueueOperation(operations.readAllEventsForward({
+	  auth: readData.auth
 	, data: readData
 	, cb: cb
-	})
+	}))
 }
 
 EsTcpConnection.prototype.readEvent = function(stream, readData, cb) {

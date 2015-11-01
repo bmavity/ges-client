@@ -34,3 +34,7 @@ Position.prototype.compare = function(other) {
 	if(thisPrepare < otherPrepare) return -1
 	return 0
 }
+
+Position.prototype.toString = function() {
+	return this.commitPosition + '/' + this.preparePosition
+}
