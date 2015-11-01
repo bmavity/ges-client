@@ -9,6 +9,7 @@ module.exports = {
 , commitTransaction: require('./operations/commitTransactionOperation')
 , deleteStream: require('./operations/deleteStreamOperation')
 , readStreamEventsBackward: require('./operations/readStreamEventsBackwardOperation')
+, readEvent: require('./operations/readEventOperation')
 , readStreamEventsForward: require('./operations/readStreamEventsForwardOperation')
 , startTransaction: require('./operations/startTransactionOperation')
 , transactionalWrite: require('./operations/transactionalWriteOperation')
@@ -85,32 +86,7 @@ ReadAllEventsBackward: function(operationData) {
 			}
 		}
 	}
-, ReadEvent: function(operationData) {
-		return {
-			auth: operationData.auth
-		, cb: operationData.cb
-		, requestType: 'ReadEvent'
-		, toRequestPayload: function(payload) {
-				var payload = operationData.data
 
-				return messageParser.serialize('ReadEvent', {
-					eventStreamId: operationData.stream
-				, eventNumber: payload.eventNumber
-				, resolveLinkTos: !!payload.resolveLinkTos
-				, requireMaster: !!payload.requireMaster
-		  	})
-	  	}
-		, responseType: 'ReadEventCompleted'
-		, toResponseObject: function(payload) {
-				return {
-					Status: payload.result
-				, Event: payload.result === 'Success' ? eventPayloads.toResolvedEvent(payload.event) : null
-				, Stream: operationData.stream
-				, EventNumber: operationData.data.eventNumber
-				}
-			}
-		}
-	}
 
 
 
