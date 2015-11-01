@@ -64,10 +64,15 @@ function EsConnectionLogicHandler() {
 	this._queue.registerHandler('StartConnection', function(msg) { me._startConnection(msg.endpointDiscoverer, msg.cb) })
 	this._queue.registerHandler('CloseConnection', function(msg) { me._closeConnection(msg.reason, msg.exception) })
 
-	this._queue.registerHandler('StartOperation', function(msg) { me._startOperation(msg.operation, msg.maxRetries, msg.timeout) })
+	this._queue.registerHandler('StartOperation', function(msg) {
+		me._startOperation(msg.operation, msg.maxRetries, msg.timeout)
+	})
 
 	this._queue.registerHandler('EstablishTcpConnection', function(msg) { me._establishTcpConnection(msg.endpoints) })
 	this._queue.registerHandler('TcpConnectionEstablished', function(msg) { me._tcpConnectionEstablished(msg.connection) })
+	this._queue.registerHandler('TcpConnectionError', function(msg) { 
+		me._tcpConnectionError(msg.connection, message.exception)
+	})
 	this._queue.registerHandler('HandleTcpPackage', function(msg) { me._handleTcpPackage(msg.connection, msg.package) })
 
 	this._queue.registerHandler('TimerTick', function(msg) { me._timerTick() })
@@ -99,48 +104,7 @@ util.inherits(EsConnectionLogicHandler, EventEmitter)
 
 
 EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
-	var me = this
-
-	if(message.type) {
-		this._queue.enqueueMessage(message)
-	} else {
-	console.log(message)
-		this._queuedMessages.push(message)
-
-		me._processNextMessage()
-	}
-}
-
-EsConnectionLogicHandler.prototype.goToConnectedState = function() {
-	this._setState('Connected')
-	this._connectingPhase = connectingPhase.Connected
-
-	this.emit('connect', {
-		endPoint: this._endPoint
-	})
-}
-
-EsConnectionLogicHandler.prototype.isInState = function(stateName) {
-	return this._state === states[stateName]
-}
-
-// BLM: THIS IS GETTING CALLED AND NEEDS TO BE REMOVED
-EsConnectionLogicHandler.prototype._processNextMessage = function() {
-	var me = this
-		, next = this._queuedMessages.shift()
-
-	if(!next) return 
-	//if(!handler) return next.cb && next.cb(new Error())
-	var handler = this._state[next.name]
-	if(!handler) {
-		console.log('FAILURE TO UPDATE EVENT ', next)
-		throw new Error('Handler not available for ' + next.name) 
-	}
-	handler.call(this, next.data, next.cb)
-
-	setImmediate(function() {
-		me._processNextMessage()
-	})
+	this._queue.enqueueMessage(message)
 }
 
 EsConnectionLogicHandler.prototype._closeConnection = function(reason, exception) {
@@ -213,6 +177,10 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 
 	connection.on('package', function(data) {
 		me.enqueueMessage(messages.handleTcpPackage(data.connection, data.package))
+	})
+
+	connection.on('error', function(err) {
+		me.enqueueMessage(messages.tcpConnectionError(connection, err))
 	})
 
 	this._tcpConnection = connection
@@ -359,6 +327,17 @@ EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connecti
   } else {
     this._goToConnectedState();
   }
+}
+
+EsConnectionLogicHandler.prototype._tcpConnectionError = function(tcpConnection, err) {
+	if(tcpConnection !== this._tcpConnection) return
+  if(this._tcpConnectionState === 'Closed') return
+
+  LogDebug('TcpConnectionError connId ' + tcpConnection.connectionId
+  	+ ', exc ' + err.message
+  	+ '.'
+	)
+  this.closeConnection('TCP connection error occurred.', err);
 }
 
 EsConnectionLogicHandler.prototype._timerTick = function() {
