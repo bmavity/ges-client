@@ -16,6 +16,9 @@ module.exports = {
 , startOperation: function(operation, maxRetries, timeout) {
 		return new StartOperation(operation, maxRetries, timeout)
 	}
+, tcpConnectionClosed: function(connection) {
+		return new TcpConnectionClosed(connection)
+	}
 , tcpConnectionError: function(connection, err) {
 		return new TcpConnectionError(connection, err)
 	}
@@ -66,6 +69,13 @@ function StartOperation(operation, maxRetries, timeout) {
 		, timeout: timeout
 		}
 	})
+}
+
+function TcpConnectionClosed(connection) {
+	this.type = 'TcpConnectionClosed'
+	this.payload = {
+		connection: connection
+	}
 }
 
 function TcpConnectionError(connection, err) {

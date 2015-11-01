@@ -73,6 +73,7 @@ function EsConnectionLogicHandler() {
 	this._queue.registerHandler('TcpConnectionError', function(msg) { 
 		me._tcpConnectionError(msg.connection, message.exception)
 	})
+	this._queue.registerHandler('TcpConnectionClosed', function(msg) { me._tcpConnectionClosed(msg.connection) })
 	this._queue.registerHandler('HandleTcpPackage', function(msg) { me._handleTcpPackage(msg.connection, msg.package) })
 
 	this._queue.registerHandler('TimerTick', function(msg) { me._timerTick() })
@@ -181,6 +182,10 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 
 	connection.on('error', function(err) {
 		me.enqueueMessage(messages.tcpConnectionError(connection, err))
+	})
+
+	connection.on('close', function() {
+		me.enqueueMessage(messages.tcpConnectionClosed(connection))
 	})
 
 	this._tcpConnection = connection
@@ -298,6 +303,17 @@ EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
   }
 }
 
+EsConnectionLogicHandler.prototype._tcpConnectionError = function(tcpConnection, err) {
+	if(tcpConnection !== this._tcpConnection) return
+  if(this._tcpConnectionState === 'Closed') return
+
+  LogDebug('TcpConnectionError connId ' + tcpConnection.connectionId
+  	+ ', exc ' + err.message
+  	+ '.'
+	)
+  this.closeConnection('TCP connection error occurred.', err);
+}
+
 EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connection) {
 	if(this._tcpConnectionState !== 'Connecting' || this._tcpConnection !== connection || connection.isClosed) {
 		/* TODO: */
@@ -327,17 +343,6 @@ EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connecti
   } else {
     this._goToConnectedState();
   }
-}
-
-EsConnectionLogicHandler.prototype._tcpConnectionError = function(tcpConnection, err) {
-	if(tcpConnection !== this._tcpConnection) return
-  if(this._tcpConnectionState === 'Closed') return
-
-  LogDebug('TcpConnectionError connId ' + tcpConnection.connectionId
-  	+ ', exc ' + err.message
-  	+ '.'
-	)
-  this.closeConnection('TCP connection error occurred.', err);
 }
 
 EsConnectionLogicHandler.prototype._timerTick = function() {
