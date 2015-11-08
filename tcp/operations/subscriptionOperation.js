@@ -61,6 +61,11 @@ function SubscriptionOperation(subscriptionData, getConnection) {
 
 	this._subscription = subscription.subscription
 	this._unsubscribed = false
+
+	var me = this
+	this._subscription.on('unsubscribe requested', function() {
+		me.unsubscribe()
+	})
 }
 util.inherits(SubscriptionOperation, EventEmitter)
 
@@ -254,6 +259,11 @@ SubscriptionOperation.prototype.subscribe = function(correlationId, tcpConnectio
   tcpConnection.enqueueSend(this.createSubscriptionPackage())
   return true
 }
+
+SubscriptionOperation.prototype.unsubscribe = function() {
+	this.dropSubscription('UserInitiated', null, this._getConnection());
+}
+
 
 
 var packageInspectors = {
