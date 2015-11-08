@@ -54,9 +54,10 @@ function EsTcpConnection(endpointDiscoverer) {
 
 	var me = this
 
+	this._connectionName = uuid.v4()
 	this._endpointDiscoverer = endpointDiscoverer
 
-	this._handler = connectionLogicHandler()
+	this._handler = connectionLogicHandler(this)
 
 	this._handler.on('connect', function(args) {
 		me.emit.apply(me, ['connect', args])
@@ -280,16 +281,12 @@ EsTcpConnection.prototype.subscribeToStream = function(stream, subscriptionData)
 
 	var subscription = createSubscription()
 
-	this._handler.enqueueMessage({
-		name: 'StartSubscription'
-	, data: {
-			name: 'SubscribeToStream'
-		, stream: stream
-		, auth: subscriptionData.auth
-		, data: subscriptionData
-		, subscription: subscription
-		}
-	})
+	this._handler.enqueueMessage(messages.startSubscription({
+	  stream: stream
+	, auth: subscriptionData.auth
+	, data: subscriptionData
+	, subscription: subscription
+	}, 0, 10000))
 
 	return subscription
 }

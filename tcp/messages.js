@@ -16,6 +16,9 @@ module.exports = {
 , startOperation: function(operation, maxRetries, timeout) {
 		return new StartOperation(operation, maxRetries, timeout)
 	}
+, startSubscription: function(subscription, maxRetries, timeout) {
+		return new StartSubscription(subscription, maxRetries, timeout)
+	}
 , tcpConnectionClosed: function(connection) {
 		return new TcpConnectionClosed(connection)
 	}
@@ -65,6 +68,19 @@ function StartOperation(operation, maxRetries, timeout) {
 	Object.defineProperty(this, 'payload', {
 		value: {
 			operation: operation
+		, maxRetries: maxRetries
+		, timeout: timeout
+		}
+	})
+}
+
+function StartSubscription(subscription, maxRetries, timeout) {
+	ensure.exists(subscription, 'subscription')
+
+	Object.defineProperty(this, 'type', { value: 'StartSubscription' })
+	Object.defineProperty(this, 'payload', {
+		value: {
+			subscription: subscription
 		, maxRetries: maxRetries
 		, timeout: timeout
 		}

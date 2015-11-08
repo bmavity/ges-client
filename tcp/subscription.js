@@ -14,6 +14,10 @@ function EsSubscription() {
 util.inherits(EsSubscription, EventEmitter)
 
 
+EsSubscription.prototype.fail = function(err) {
+	this.emit('error', err)
+}
+
 EsSubscription.prototype.unsubscribe = function() {
 	var me = this
 	setImmediate(function() {
