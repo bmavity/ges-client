@@ -255,15 +255,11 @@ EsTcpConnection.prototype.subscribeToAll = function(subscriptionData) {
 
 	var subscription = createSubscription()
 
-	this._handler.enqueueMessage({
-		name: 'StartSubscription'
-	, data: {
-			name: 'SubscribeToStream'
-		, auth: subscriptionData.auth
-		, data: subscriptionData
-		, subscription: subscription
-		}
-	})
+	this._handler.enqueueMessage(messages.startSubscription({
+	  auth: subscriptionData.auth
+	, data: subscriptionData
+	, subscription: subscription
+	}, 0, 10000))
 
 	return subscription
 }
