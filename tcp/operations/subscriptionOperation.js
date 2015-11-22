@@ -19,6 +19,7 @@ var util = require('util')
 		})
 
 module.exports = SubscriptionOperation
+Object.defineProperty(module.exports, 'dropReason', { value: dropReason })
 
 /*
 	subscription.on('unsubscribe requested', function() {
@@ -156,10 +157,14 @@ SubscriptionOperation.prototype.dropSubscription = function(reason, err) {
                     ExecuteActionAsync(() => _subscriptionDropped(_subscription, reason, exc));
             }
             */
-  this._subscription.emit('dropped', {
-  	reason: reason
-  , err: err
-  })
+  if(!this._unsubscribed) {
+  	this._unsubscribed = true
+
+	  this._subscription.emit('dropped', {
+	  	reason: reason
+	  , err: err
+	  })
+  }
 }
 
 SubscriptionOperation.prototype.inspectPackage = function(package) {
@@ -177,7 +182,33 @@ SubscriptionOperation.prototype.inspectPackage = function(package) {
     this.dropSubscription('Unknown', err)
     return inspection(inspection.decision.EndOperation, 'Exception - ' + err.message)
   }
-		/*
+}
+
+SubscriptionOperation.prototype.subscribe = function(correlationId, tcpConnection) {
+	ensure.exists(tcpConnection, 'tcpConnection')
+
+	//TODO: Fix this after Subscription decision
+	/*
+	if(this._subscription !== null || this._unsubscribed) {
+    return false
+	}
+	*/
+	if(this._unsubscribed) {
+    return false
+	}
+
+  this._correlationId = correlationId
+  tcpConnection.enqueueSend(this.createSubscriptionPackage())
+  return true
+}
+
+SubscriptionOperation.prototype.unsubscribe = function() {
+	this.dropSubscription('UserInitiated', null, this._getConnection());
+}
+
+
+
+/*
           case TcpCommand.SubscriptionDropped:
           {
               var dto = package.Data.Deserialize<ClientMessage.SubscriptionDropped>();
@@ -240,32 +271,6 @@ SubscriptionOperation.prototype.inspectPackage = function(package) {
               }
           }
   */
-}
-
-SubscriptionOperation.prototype.subscribe = function(correlationId, tcpConnection) {
-	ensure.exists(tcpConnection, 'tcpConnection')
-
-	//TODO: Fix this after Subscription decision
-	/*
-	if(this._subscription !== null || this._unsubscribed) {
-    return false
-	}
-	*/
-	if(this._unsubscribed) {
-    return false
-	}
-
-  this._correlationId = correlationId
-  tcpConnection.enqueueSend(this.createSubscriptionPackage())
-  return true
-}
-
-SubscriptionOperation.prototype.unsubscribe = function() {
-	this.dropSubscription('UserInitiated', null, this._getConnection());
-}
-
-
-
 var packageInspectors = {
   SubscriptionConfirmation: {
   	responseType: 'SubscriptionConfirmation'
@@ -276,6 +281,15 @@ var packageInspectors = {
 			, lastEventNumber: payload.lastEventNumber
 			})
       return inspection(inspection.decision.Subscribed, 'SubscriptionConfirmation')
+	  }
+	}
+, SubscriptionDropped: {
+  	responseType: 'SubscriptionDropped'
+  , inspect: function(payload, subscription) {
+  		console.log('sub dropped: ', payload, payload.reason)
+
+  		this.dropSubscription(dropReason.UserInitiated, null)
+      return inspection(inspection.decision.EndOperation, 'SubscriptionDropped' + payload.reason)
 	  }
 	}
 , StreamEventAppeared: {
@@ -291,6 +305,28 @@ var packageInspectors = {
       return inspection(inspection.decision.DoNothing, 'StreamEventAppeared')
 	  }
 	}
+/*
+case TcpCommand.SubscriptionDropped:
+          {
+              var dto = package.Data.Deserialize<ClientMessage.SubscriptionDropped>();
+              switch (dto.Reason)
+              {
+                  case ClientMessage.SubscriptionDropped.SubscriptionDropReason.Unsubscribed:
+                      DropSubscription(SubscriptionDropReason.UserInitiated, null);
+                      break;
+                  case ClientMessage.SubscriptionDropped.SubscriptionDropReason.AccessDenied:
+                      DropSubscription(SubscriptionDropReason.AccessDenied, 
+                                       new AccessDeniedException(string.Format("Subscription to '{0}' failed due to access denied.", _streamId == string.Empty ? "<all>" : _streamId)));
+                      break;
+                  default: 
+                      if (_verboseLogging) _log.Debug("Subscription dropped by server. Reason: {0}.", dto.Reason);
+                      DropSubscription(SubscriptionDropReason.Unknown, 
+                                       new CommandNotExpectedException(string.Format("Unsubscribe reason: '{0}'.", dto.Reason)));
+                      break;
+              }
+              return new InspectionResult(InspectionDecision.EndOperation, string.Format("SubscriptionDropped: {0}", dto.Reason));
+          }
+*/
 }
 
 var responseHandlers = {
