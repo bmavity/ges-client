@@ -14,8 +14,11 @@ function OperationBase(operationData) {
 OperationBase.prototype.fail = function(err) {
 	if(this._completed) return
 
+	var me = this
 	this._completed = true
-	this._cb(err)
+	setImmediate(function() {
+		me._cb(err)
+	})
 }
 
 OperationBase.prototype.inspectPackage = function(package) {
