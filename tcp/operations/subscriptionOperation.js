@@ -106,34 +106,8 @@ SubscriptionOperation.prototype.confirmSubscription = function(lastCommitPositio
   //this._source.SetResult(_subscription)
 }
 
-SubscriptionOperation.prototype.eventAppeared = function(resolvedEvent) {
-	if(this._unsubscribed) return
-
-  if(this._subscription === null) {
-  	throw new Error('Subscription not confirmed, but event appeared!')
-  }
-
-  if(this._verboseLogging) {
-  	/*
-    _log.Debug("Subscription {0:B} to {1}: event appeared ({2}, {3}, {4} @ {5}).",
-              _correlationId, _streamId == string.Empty ? "<all>" : _streamId,
-              e.OriginalStreamId, e.OriginalEventNumber, e.OriginalEvent.EventType, e.OriginalPosition);
-*/
-  }
-
-  this._subscription.emit('event', resolvedEvent)
-}
-
-SubscriptionOperation.prototype.finish = function(message) {
-	var handler = responseHandlers[message.messageName]
-	try {
-		var payload = parser.parse(handler.responseType, message.payload)
-	}
-	catch(ex) {
-		this._subscription.emit('error', ex)
-	}
-
-	handler.processResponse(payload, this._subscription)
+SubscriptionOperation.prototype.connectionClosed = function() {
+  this.dropSubscription(dropReason.ConnectionClosed, new Error('Connection was closed.'))
 }
 
 SubscriptionOperation.prototype.dropSubscription = function(reason, err) {
@@ -165,6 +139,36 @@ SubscriptionOperation.prototype.dropSubscription = function(reason, err) {
 	  , err: err
 	  })
   }
+}
+
+SubscriptionOperation.prototype.eventAppeared = function(resolvedEvent) {
+	if(this._unsubscribed) return
+
+  if(this._subscription === null) {
+  	throw new Error('Subscription not confirmed, but event appeared!')
+  }
+
+  if(this._verboseLogging) {
+  	/*
+    _log.Debug("Subscription {0:B} to {1}: event appeared ({2}, {3}, {4} @ {5}).",
+              _correlationId, _streamId == string.Empty ? "<all>" : _streamId,
+              e.OriginalStreamId, e.OriginalEventNumber, e.OriginalEvent.EventType, e.OriginalPosition);
+*/
+  }
+
+  this._subscription.emit('event', resolvedEvent)
+}
+
+SubscriptionOperation.prototype.finish = function(message) {
+	var handler = responseHandlers[message.messageName]
+	try {
+		var payload = parser.parse(handler.responseType, message.payload)
+	}
+	catch(ex) {
+		this._subscription.emit('error', ex)
+	}
+
+	handler.processResponse(payload, this._subscription)
 }
 
 SubscriptionOperation.prototype.inspectPackage = function(package) {

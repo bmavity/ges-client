@@ -11,6 +11,19 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 	, EventEmitter = require('events').EventEmitter
 	, uuid = require('node-uuid')
 	, Stopwatch = require('statman-stopwatch')
+	, getIsoDate = require('./getIsoDate')
+	, dateDiff = require('./isoDateDiff')
+	, defaultSettings = {
+			maxReconnections: 0
+		, operationTimeout: 100
+		, reconnectionDelay: 100
+/*
+		, defaultUserCredentials: {
+				username: 'username'
+			, passsword: 'changeit'
+			}
+*/
+		}
 
 
 function LogDebug(message) {
@@ -28,7 +41,7 @@ function noOp(message, cb) {
 	cb && cb(null)
 }	
 
-function EsConnectionLogicHandler(esConnection) {
+function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	if(!(this instanceof EsConnectionLogicHandler)) {
 		return new EsConnectionLogicHandler(esConnection)
 	}
@@ -74,6 +87,8 @@ function EsConnectionLogicHandler(esConnection) {
 	this._wasConnected = false
 	this._packageNumber = 0
 
+	Object.defineProperty(this, '_settings', { value: connectionSettings || defaultSettings })
+
 	this._timer = setInterval(function() {
 		me.enqueueMessage({
 			type: 'TimerTick'
@@ -88,6 +103,7 @@ EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
 }
 
 EsConnectionLogicHandler.prototype._closeConnection = function(reason, exception) {
+	LogDebug('In close connection handler')
 	this._getStateMessageHandler(closeConnectionHandlers)
 		.call(this, reason, exception)
 }
@@ -110,6 +126,8 @@ EsConnectionLogicHandler.prototype._closeTcpConnection = function(reason) {
 }
 
 EsConnectionLogicHandler.prototype._discoverEndpoint = function(cb) {
+	cb = cb || noOp
+
 	if(this._tcpConnectionState !== 'Connecting') return cb()
 	if(this._connectingPhase !== connectingPhase.Reconnecting) return cb()
 
@@ -240,6 +258,13 @@ EsConnectionLogicHandler.prototype._manageHeartbeats = function() {
 	} 
 }
 
+EsConnectionLogicHandler.prototype._raiseAuthenticationFailed = function(reason) {
+	this.emit('authentication failed', {
+		esConnection: this._esConnection
+	, reason: reason
+	})
+}
+
 EsConnectionLogicHandler.prototype._startConnection = function(endpointDiscoverer, cb) {
 	this._getStateMessageHandler(startConnectionHandlers)
 		.call(this, endpointDiscoverer, cb)
@@ -271,11 +296,8 @@ EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
   //TODO: 
   LogDebug('TCP connection to [{0}, L{1}, {2:B}] closed.', connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
 
-  //this._subscriptions.PurgeSubscribedAndDroppedSubscriptions(_tcpConnection.ConnectionId);
-  this._reconnInfo = {
-  	reconnectionAttempt: _reconnInfo.ReconnectionAttempt
-  , timeStamp: this._stopwatch.read()
-	}
+  this._subscriptions.purgeSubscribedAndDroppedSubscriptions(this._tcpConnection.connectionId)
+  this._reconnInfo = new ReconnectionInfo()
 
   if(this._wasConnected) {
   	this._wasConnected = false
@@ -308,18 +330,15 @@ EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connecti
   LogDebug('TCP connection to [{0}, L{1}, {2:B}] established.', connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
   this._heartbeatInfo = new HeartbeatInfo(this._packageNumber, true, this._stopwatch.read());
 
-  if((this._settings || {}).DefaultUserCredentials) {
-    _connectingPhase = connectingPhase.Authentication;
+  if(this._settings.defaultUserCredentials) {
+    this._connectingPhase = connectingPhase.Authentication;
+    this._authInfo = new AuthInfo()
 
-/*
-    _authInfo = new AuthInfo(Guid.NewGuid(), this._stopwatch.read());
-    _tcpConnection.EnqueueSend(new TcpPackage('Authenticate,
-                                             TcpFlags.Authenticated,
-                                             _authInfo.CorrelationId,
-                                             _settings.DefaultUserCredentials.Username,
-                                             _settings.DefaultUserCredentials.Password, 
-                                             null));
-*/
+    this._tcpConnection.enqueueSend({
+    	messageName: 'Authenticate'
+  	, correlationId: this._authInfo.correlationId
+  	, auth: this._settings.defaultUserCredentials
+	  })
   } else {
     this._goToConnectedState();
   }
@@ -336,7 +355,6 @@ var closeConnectionHandlers = {
 		, Connecting: performCloseConnection
 		, Connected: performCloseConnection
 		, Closed: function(reason, exception) {
-				//TODO:
 				LogDebug('CloseConnection IGNORED because is ESConnection is CLOSED, reason {0}, exception {1}.', reason, exception)
 			}
 		}
@@ -351,8 +369,7 @@ function performCloseConnection(reason, exception) {
 	this._subscriptions.cleanUp()
 	this._closeTcpConnection(reason)
 
-	//TODO: 
-	LogInfo('Closed. Reason: {0}.', reason);
+	LogInfo('Closed. Reason: {0}.', reason)
 
 	if(exception) {
 		this.emit('error', exception)
@@ -387,13 +404,12 @@ function handleTcpPackage(connection, package) {
   }
 
   if(package.messageName === 'Authenticated' || package.messageName === 'NotAuthenticated') {
-    if(this._tcpConnectionState === 'Connecting' && this._connectingPhase === connectingPhase.Authentication) {
-     	//&& _authInfo.CorrelationId === package.correlationId) {
-	/*
-      if(package.Command == 'NotAuthenticated) {
-        RaiseAuthenticationFailed('Not authenticated')
+    if(this._tcpConnectionState === 'Connecting'
+    && this._connectingPhase === connectingPhase.Authentication
+    && this._authInfo.correlationId === package.correlationId) {
+      if(package.messageName === 'NotAuthenticated') {
+        this._raiseAuthenticationFailed('Not authenticated')
       }
-      */
 
       this._goToConnectedState()
       return
@@ -530,29 +546,26 @@ var startSubscriptionHandlers = {
 var timerTickHandlers = {
 			Init: noOp
 		, Connecting: function() {
-			console.log(this._connectingPhase, this._tcpConnectionState)
-			/* TODO:
-			if (_connectingPhase === ConnectingPhase.Reconnecting) { // && this._stopwatch.read() - _reconnInfo.TimeStamp >= _settings.ReconnectionDelay) {
-        LogDebug('TimerTick checking reconnection...')
+      	if(this._connectingPhase === connectingPhase.Reconnecting
+    		&& dateDiff(this._reconnInfo.timeStamp) >= this._settings.reconnectionDelay) {
+      		LogDebug('TimerTick checking reconnection...')
 
-        this._reconnInfo = new ReconnectionInfo(_reconnInfo.ReconnectionAttempt + 1, this._stopwatch.read())
-        if(_settings.MaxReconnections >= 0 && _reconnInfo.ReconnectionAttempt > _settings.MaxReconnections) {
-          this._closeConnection('Reconnection limit reached.')
-        } else {
-          this.emit('reconnecting')
-          this._discoverEndpoint(noOp)
-        }
-      }
-      */
+      		this._reconnInfo = this._reconnInfo.nextRetry()
+      		if(this._settings.maxReconnections >= 0 && this._reconnInfo.reconnectionAttempt > this._settings.maxReconnections) {
+      			this.closeConnection('Reconnection limit reached.')
+      		} else {
+      			this.emit('reconnecting', this_esConnection)
+      			this._discoverEndpoint()
+      		}
+      	}
 
-      /* TODO: 
-      if(_connectingPhase === ConnectingPhase.Authentication) { //&& this._stopwatch.read() - _authInfo.TimeStamp >= _settings.OperationTimeout) {
-        RaiseAuthenticationFailed('Authentication timed out.')
-        GoToConnectedState()
-      }
-      */
+      	if(this._connectingPhase === connectingPhase.Authentication
+    		&& dateDiff(this._authInfo.timeStamp) > this._settings.operationTimeout) {
+      		this._raiseAuthenticationFailed('Authentication timed out.')
+    			this._goToConnectedState()
+      	}
 
-	      if(_connectingPhase > connectingPhase.ConnectionEstablishing) {
+	      if(this._connectingPhase > connectingPhase.ConnectionEstablishing) {
 	        this._manageHeartbeats()
 	      }
 			}
@@ -584,8 +597,39 @@ var connectingPhase = {
 , Connected: 5
 }
 
+
+function AuthInfo(args) {
+	var id = !!args ? args.correlationId : uuid.v4()
+		, ts = !!args ? args.timeStamp : getIsoDate()
+	Object.defineProperty(this, 'correlationId', { value: id })
+	Object.defineProperty(this, 'timeStamp', { value: ts })
+}
+
+ReconnectionInfo.prototype.next = function() {
+	return new AuthInfo({
+		correlationId: uuid.v4()
+	, timeStamp: getIsoDate()
+	})
+}
+
+
 function HeartbeatInfo(lastPackageNumber, isIntervalStage, timeStamp) {
 	Object.defineProperty(this, 'LastPackageNumber', { value: lastPackageNumber })
 	Object.defineProperty(this, 'IsIntervalStage', { value: isIntervalStage })
 	Object.defineProperty(this, 'TimeStamp', { value: timeStamp })
+}
+
+
+function ReconnectionInfo(args) {
+	var val = !!args ? args.reconnectionAttempt : 0
+		, ts = !!args ? args.timeStamp : getIsoDate()
+	Object.defineProperty(this, 'reconnectionAttempt', { value: val })
+	Object.defineProperty(this, 'timeStamp', { value: ts })
+}
+
+ReconnectionInfo.prototype.next = function() {
+	return new ReconnectionInfo({
+		value: this.reconnectionAttempt + 1
+	, timeStamp: getIsoDate()
+	})
 }

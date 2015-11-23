@@ -15,11 +15,13 @@ module.exports = {
 
 
 function frameMessage(messageName, correlationId, payload, auth) {
-  var usernameOffset = authOffset + 1
-  	, usernameLength = Buffer.byteLength('admin')
+  var username = !!auth ? auth.username : ''
+  	, usernameOffset = authOffset + 1
+  	, usernameLength = Buffer.byteLength(username)
+  	, password = !!auth ? auth.password : ''
   	, passwordLengthOffset = usernameOffset + usernameLength
   	, passwordOffset = passwordLengthOffset + 1
-  	, passwordLength = Buffer.byteLength('changeit')
+  	, passwordLength = Buffer.byteLength(password)
   	, payloadOffset = !!auth ? passwordOffset + passwordLength : authOffset
 	  , payloadSize = payload ? payload.length : 0
 		, contentLength = payloadOffset + payloadSize - lengthPrefixLength
@@ -38,9 +40,9 @@ function frameMessage(messageName, correlationId, payload, auth) {
 
   if(auth) {
 	  packet.writeUInt8(usernameLength, authOffset)
-	  packet.write('admin', usernameOffset)
+	  packet.write(username, usernameOffset)
 	  packet.writeUInt8(passwordLength, passwordLengthOffset)
-	  packet.write('changeit', passwordOffset)
+	  packet.write(password, passwordOffset)
 	}
 
   if (payloadSize > 0) {

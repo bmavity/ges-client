@@ -31,6 +31,13 @@ function SubscriptionsManager(connectionName, connectionSettings) {
 	Object.defineProperty(this, '_settings', { value: connectionSettings || defaultSettings })
 }
 
+SubscriptionsManager.prototype._getActive = function() {
+	var me = this
+	return Object.keys(this._activeSubscriptions).map(function(id) {
+		return me._activeSubscriptions[id]
+	})
+}
+
 SubscriptionsManager.prototype.checkTimeoutsAndRetry = function(tcpConnection) {
 	ensure.exists(tcpConnection)
 
@@ -38,7 +45,7 @@ SubscriptionsManager.prototype.checkTimeoutsAndRetry = function(tcpConnection) {
 		, removeSubscriptions = []
 		, me = this
 
-	this._activeSubscriptions.forEach(function(subscriptionItem) {
+		this._getActive().forEach(function(subscriptionItem) {
 		if(subscriptionItem.isSubscribed) return
 		if(subscriptionItem.connectionId !== tcpConnection.connectionId) {
 			retrySubscriptions.push(subscriptionItem)
@@ -82,7 +89,7 @@ SubscriptionsManager.prototype.checkTimeoutsAndRetry = function(tcpConnection) {
 SubscriptionsManager.prototype.cleanUp = function() {
 	var err = new Error('Connection "' + this._connectionName + '" was closed.')
 		, me = this
-		, allSubs = Object.keys(this._activeSubscriptions).map(function(key) { return me._activeSubscriptions[key] })
+		, allSubs = this._getActive()
 				.concat(this._waitingSubscriptions)
 				.concat(this._retryPendingSubscriptions)
 
@@ -101,6 +108,17 @@ SubscriptionsManager.prototype.enqueueSubscription = function(subscriptionItem) 
 
 SubscriptionsManager.prototype.getActiveSubscription = function(correlationId) {
 	return this._activeSubscriptions[correlationId]
+}
+
+SubscriptionsManager.prototype.purgeSubscribedAndDroppedSubscriptions = function(connectionId) {
+  var activeSubscriptions = this._activeSubscriptions
+
+	this._getActive().filter(function(subscriptionItem) {
+		return subscriptionItem.isSubscribed && subscriptionItem.connectionId === connectionId
+	}).forEach(function(subscriptionItem) {
+		subscription.operation.connectionClosed()
+		delete activeSubscriptions[subscriptionItem.correlationId]
+	})
 }
 
 SubscriptionsManager.prototype.removeSubscription = function(subscriptionItem) {
