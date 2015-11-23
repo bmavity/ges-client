@@ -112,8 +112,8 @@ EsTcpConnection.prototype.deleteStream = function(stream, deleteData, cb) {
 }
 
 EsTcpConnection.prototype.close = function(cb) {
-	this._handler.enqueueMessage(messages.closeConnection('Connection close requested by client.', null))
 	this._handler.once('closed', cb)
+	this._handler.enqueueMessage(messages.closeConnection('Connection close requested by client.', null))
 }
 
 EsTcpConnection.prototype.connect = function() {
