@@ -1,5 +1,7 @@
 var client = require('../../')
 	, ges = require('ges-test-helper').memory
+	, should = require('../shouldExtensions')
+
 
 describe('connection, when created', function() {
 	var es
@@ -16,35 +18,45 @@ describe('connection, when created', function() {
 
 	it('with a callback, should be connected when callback is called', function(done) {
 		client(esSettings, function(err, connection) {
-			(err === null).should.be.true
-			connection.isInState('Connected').should.be.true
-			connection.close(function() {
+			if(err) return done(err)
+
+			connection.on('close', function() {
+				should.pass()
 				done()
-			})
+			}).on('error', done)
+
+			connection.isInState('Connected').should.be.true
+			connection.close()
 		})
 	})
 
 	it('without a callback, should raise connect event with endpoint as data', function(done) {
 		var connection = client(esSettings)
+
+		connection.on('close', function() {
+			should.pass()
+			done()
+		}).on('error', done)
 		
 		connection.on('connect', function(endpoint) {
 			endpoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
-			connection.close(function() {
-				done()
-			})
+			connection.close()
 		})
 	})
 
 	it('without a callback and with requireExplicitConnection flag set, should raise connect event with endpoint as data', function(done) {
 		var connection = client(esSettings)
 		
+		connection.on('close', function() {
+			should.pass()
+			done()
+		}).on('error', done)
+
 		connection.on('connect', function(endpoint) {
 			endpoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
-			connection.close(function() {
-				done()
-			})
+			connection.close()
 		})
 
 		connection.connect()
@@ -52,11 +64,15 @@ describe('connection, when created', function() {
 
 	it('with a callback and with requireExplicitConnection flag set, should be connected when callback is called', function(done) {
 		var con = client(esSettings, function(err, connection) {
-			(err === null).should.be.true
-			connection.isInState('Connected').should.be.true
-			connection.close(function() {
+			if(err) return done(err)
+
+			connection.on('close', function() {
+				should.pass()
 				done()
-			})
+			}).on('error', done)
+
+			connection.isInState('Connected').should.be.true
+			connection.close()
 		})
 
 		con.connect()

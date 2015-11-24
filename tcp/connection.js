@@ -74,6 +74,10 @@ EsTcpConnection.prototype.appendToStream = function(stream, appendData, cb) {
 	}))
 }
 
+EsTcpConnection.prototype.emitClose = function(reason) {
+	this.emit('close', reason)
+}
+
 EsTcpConnection.prototype.startTransaction = function(stream, transactionData, cb) {
 	var auth = transactionData.auth
 		, me = this
@@ -111,8 +115,7 @@ EsTcpConnection.prototype.deleteStream = function(stream, deleteData, cb) {
 	}))
 }
 
-EsTcpConnection.prototype.close = function(cb) {
-	this._handler.once('closed', cb)
+EsTcpConnection.prototype.close = function() {
 	this._handler.enqueueMessage(messages.closeConnection('Connection close requested by client.', null))
 }
 

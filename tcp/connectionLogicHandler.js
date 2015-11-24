@@ -379,7 +379,7 @@ function performCloseConnection(reason, exception) {
 		this.emit('error', exception)
 	}
 
-	this.emit('closed', reason)
+	this._esConnection.emitClose(reason)
 }
 
 var handleTcpPackageHandlers = {

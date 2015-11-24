@@ -137,8 +137,7 @@ describe('when_committing_empty_transaction', function() {
   			, events: createTestEvent()
 		  	}
   	connection.appendToStream(stream, appendOptions, function(err, appendResult) {
-  		should.not.be.null(err)
-  		err.message.should.equal('Wrong expected version.')
+			err.should.be.wrongExpectedVersion()
 			done()
   	})
   })

@@ -5,6 +5,7 @@ var client = require('../../../')
 	, range = require('../../range')
 	, streamWriter = require('../../streamWriter')
 	, eventStreamCounter = require('../../eventStreamCounter')
+	, should = require('../../shouldExtensions')
 
 describe('appending_to_implicitly_created_stream', function() {
 	var es
@@ -103,7 +104,7 @@ describe('appending_to_implicitly_created_stream', function() {
 	  	if(err) return done(err)
 
 	  	tailWriter(allEvents[0], 6, function(err) {
-	  		err.message.should.startWith('Append failed due to WrongExpectedVersion.')
+	  		err.should.be.wrongExpectedVersion()
 	  		done()
 	  	})
 	  })
@@ -120,7 +121,7 @@ describe('appending_to_implicitly_created_stream', function() {
 	  	if(err) return done(err)
 
 	  	tailWriter(allEvents[0], 4, function(err) {
-	  		err.message.should.startWith('Append failed due to WrongExpectedVersion.')
+	  		err.should.be.wrongExpectedVersion()
 	  		done()
 	  	})
 	  })
@@ -351,7 +352,7 @@ describe('appending_to_implicitly_created_stream', function() {
 					, events: allEvents.concat([ createTestEvent(uuid.v4()) ])
 					}
 		  connection.appendToStream(stream, appendData2, function(err, appendResult) {
-	  		err.message.should.startWith('Append failed due to WrongExpectedVersion.')
+				err.should.be.wrongExpectedVersion()
 	  		done()
 		  })
 	  })

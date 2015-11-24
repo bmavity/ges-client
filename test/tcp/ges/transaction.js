@@ -78,7 +78,7 @@ describe('transaction', function() {
     		if(err) return done(err)
 
     		transaction.commit(function(err, commitResult) {
-    			should.not.be.null(err)
+					err.should.be.wrongExpectedVersion()
     			done()
     		})
     	})
@@ -158,8 +158,7 @@ describe('transaction', function() {
     		if(err) return done(err)
 
     		transaction.commit(function(err, commitResult) {
-    			should.not.be.null(err)
-    			err.message.should.equal('Wrong expected version.')
+					err.should.be.wrongExpectedVersion()
     			done()
     		})
     	})
@@ -189,8 +188,7 @@ describe('transaction', function() {
 	    		if(err) return done(err)
 
 	    		transaction.commit(function(err, commitResult) {
-	    			should.not.be.null(err)
-	    			err.message.should.equal('Wrong expected version.')
+						err.should.be.wrongExpectedVersion()
 	    			done()
 	    		})
 	    	})
@@ -249,7 +247,7 @@ describe('transaction', function() {
 
 	    		transaction.commit(function(err, commitResult) {
 	    			should.not.be.null(err)
-	    			err.message.should.equal('Stream is deleted.')
+	    			err.message.should.equal('Stream was deleted')
 	    			done()
 		    	})
 	    	})

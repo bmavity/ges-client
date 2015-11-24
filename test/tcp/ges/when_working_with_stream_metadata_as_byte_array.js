@@ -93,7 +93,7 @@ describe('when_working_with_stream_metadata_as_byte_array', function() {
 				}
 
 		connection.setStreamMetadata(stream, setData, function(err) {
-			err.message.should.endWith('Wrong expected version.')
+			err.should.be.wrongExpectedVersion()
 			done()
 		})
   })

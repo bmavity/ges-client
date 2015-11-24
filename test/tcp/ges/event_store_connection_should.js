@@ -2,6 +2,8 @@ var client = require('../../../')
 	, ges = require('ges-test-helper').memory
 	, uuid = require('node-uuid')
 	, async = require('async')
+	, should = require('../../shouldExtensions')
+	, isError = require('../../isError')
 	, createTestEvent = require('../../createTestEvent')
 
 describe('event_store_connection_should', function() {
@@ -21,23 +23,35 @@ describe('event_store_connection_should', function() {
 				, requireExplicitConnect: true
 				})
 
-		connection.close(function(err) {
-			(err === null).should.be.true
+		connection.on('close', function() {
+			should.pass()
 			done()
-		})
+		}).on('error', done)
+
+		connection.close()
   })
 
   it('not_throw_on_close_if_called_multiple_times', function(done) {
 		client(connectionSettings, function(err, connection) {
 			if(err) return done(err)
-			connection.close(function(err) {
-				if(err) return done(err)
-				connection.close(function(err) {
-					if(err) return done(err)
-					(err === null).should.be.true
-					done()
-				})
+			var isClosed = false
+				, hasError = false
+
+			connection.on('close', function() {
+				isClosed = true
+				done()
+			}).on('error', function(err) {
+				hasError = true
+				done(err)
 			})
+
+			connection.close()
+			connection.close()
+
+			if(isClosed && !hasError) {
+				should.pass()
+				done()
+			}
 		})
   })
 
@@ -51,6 +65,12 @@ describe('event_store_connection_should', function() {
 				})
   		, s = 'stream'
 			, events = [ createTestEvent() ]
+
+		connection.on('close', function() {
+			should.pass()
+			done()
+		}).on('error', done)
+
   	async.series([
   		function(cb) {
 			/*
@@ -72,7 +92,7 @@ describe('event_store_connection_should', function() {
   		}
   	, function(cb) {
   			connection.readStreamEventsForward(s, { start: 0, count: 1 }, function(err) {
-  				(err === null).should.be.false
+  				should.be.error(err)
   				cb()
   			})
   		}
@@ -131,7 +151,7 @@ describe('event_store_connection_should', function() {
   			setImmediate(cb)
   		}
 		], function() {
-			connection.close(done)
+			connection.close()
 		})
   })
 	

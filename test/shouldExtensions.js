@@ -44,6 +44,12 @@ should.use(function(should, Assertion) {
     actual.should.eql(expected)
   })
 
+  Assertion.add('wrongExpectedVersion', function(val, description) {
+    this.params = { operator: 'to be Wrong Expected Version', expected: 'WrongExpectedVersion', showDiff: false, message: description }
+
+    this.obj.message.should.containEql('WrongExpectedVersion')
+  })
+
   Assertion.alias('matchEvents', 'matchEvent')
 })
 
@@ -56,14 +62,20 @@ should.pass = function() {
 }
 
 should.be = {
-	null: function(actual) {
+	error: function(actual) {
+		Object.prototype.toString.call(actual).should.equal('[object Error]', 'Object should be an Error')
+	}
+, null: function(actual) {
 		(actual === null).should.equal(true, 'Object should be null.')
 	}
 }
 
 should.not = {
 	be: {
-		null: function(actual) {
+		error: function(actual) {
+			Object.prototype.toString.call(actual).should.not.equal('[object Error]', 'Object should not be an Error')
+		}
+	, null: function(actual) {
 			(actual === null).should.equal(false, 'Object should not be null.')
 		}
 	}

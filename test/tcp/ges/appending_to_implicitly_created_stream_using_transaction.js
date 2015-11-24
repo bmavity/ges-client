@@ -163,8 +163,7 @@ describe('appending_to_implicitly_created_stream_using_transaction', function() 
 					  	if(err) return done(err)
 
 						  transaction.commit(function(err, commitResult) {
-						  	should.not.be.null(err)
-						  	err.message.should.equal('Wrong expected version.')
+								err.should.be.wrongExpectedVersion()
 						  	done()
 						  })
 					  })
@@ -196,8 +195,7 @@ describe('appending_to_implicitly_created_stream_using_transaction', function() 
 					  	if(err) return done(err)
 
 						  transaction.commit(function(err, commitResult) {
-						  	should.not.be.null(err)
-						  	err.message.should.equal('Wrong expected version.')
+								err.should.be.wrongExpectedVersion()
 						  	done()
 						  })
 					  })
@@ -389,9 +387,7 @@ describe('appending_to_implicitly_created_stream_using_transaction', function() 
 					  	if(err) return done(err)
 
 						  transaction.commit(function(err, commitResult) {
-						  	should.not.be.null(err)
-						  	err.message.should.equal('Wrong expected version.')
-
+								err.should.be.wrongExpectedVersion()
 						  	done()
 						  })
 					  })
