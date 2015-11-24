@@ -102,6 +102,10 @@ EsConnectionLogicHandler.prototype.enqueueMessage = function(message) {
 	this._queue.enqueueMessage(message)
 }
 
+EsConnectionLogicHandler.prototype.isInState = function(state) {
+	return this._tcpConnectionState === state
+}
+
 EsConnectionLogicHandler.prototype._closeConnection = function(reason, exception) {
 	LogDebug('In close connection handler')
 	this._getStateMessageHandler(closeConnectionHandlers)
@@ -211,7 +215,7 @@ EsConnectionLogicHandler.prototype._goToConnectedState = function() {
 
   this._wasConnected = true
 
-  this.emit('connect', this._tcpConnection.RemoteEndPoint)
+  this.emit('connect', this._tcpConnection.remoteEndpoint)
 
 /*
   if(this._stopwatch.read() - this._lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {

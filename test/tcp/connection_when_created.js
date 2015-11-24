@@ -18,27 +18,33 @@ describe('connection, when created', function() {
 		client(esSettings, function(err, connection) {
 			(err === null).should.be.true
 			connection.isInState('Connected').should.be.true
-			connection.close(done)
+			connection.close(function() {
+				done()
+			})
 		})
 	})
 
 	it('without a callback, should raise connect event with endpoint as data', function(done) {
 		var connection = client(esSettings)
 		
-		connection.on('connect', function(message) {
-			message.endPoint.port.should.equal(esSettings.port)
+		connection.on('connect', function(endpoint) {
+			endpoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
-			connection.close(done)
+			connection.close(function() {
+				done()
+			})
 		})
 	})
 
 	it('without a callback and with requireExplicitConnection flag set, should raise connect event with endpoint as data', function(done) {
 		var connection = client(esSettings)
 		
-		connection.on('connect', function(message) {
-			message.endPoint.port.should.equal(esSettings.port)
+		connection.on('connect', function(endpoint) {
+			endpoint.port.should.equal(esSettings.port)
 			connection.isInState('Connected').should.be.true
-			connection.close(done)
+			connection.close(function() {
+				done()
+			})
 		})
 
 		connection.connect()
@@ -48,7 +54,9 @@ describe('connection, when created', function() {
 		var con = client(esSettings, function(err, connection) {
 			(err === null).should.be.true
 			connection.isInState('Connected').should.be.true
-			connection.close(done)
+			connection.close(function() {
+				done()
+			})
 		})
 
 		con.connect()

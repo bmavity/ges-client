@@ -47,6 +47,8 @@ function TcpPackageConnection(opts) {
 
 	this._socket = socket
 	this._closeCallbacks = closeCallbacks
+	
+	this.remoteEndpoint = opts.endPoint
 }
 util.inherits(TcpPackageConnection, EventEmitter)
 
