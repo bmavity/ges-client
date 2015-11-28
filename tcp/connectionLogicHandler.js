@@ -16,7 +16,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 
 
 function LogDebug(message) {
-	//console.log(message)
+	console.log(message)
 }
 
 function LogInfo(message) {
@@ -53,7 +53,7 @@ function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	this._queue.registerHandler('EstablishTcpConnection', function(msg) { me._establishTcpConnection(msg.endpoints) })
 	this._queue.registerHandler('TcpConnectionEstablished', function(msg) { me._tcpConnectionEstablished(msg.connection) })
 	this._queue.registerHandler('TcpConnectionError', function(msg) { 
-		me._tcpConnectionError(msg.connection, message.exception)
+		me._tcpConnectionError(msg.connection, msg.exception)
 	})
 	this._queue.registerHandler('TcpConnectionClosed', function(msg) { me._tcpConnectionClosed(msg.connection) })
 	this._queue.registerHandler('HandleTcpPackage', function(msg) { me._handleTcpPackage(msg.connection, msg.package) })
@@ -77,6 +77,7 @@ function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	this._connectingPhase = connectingPhase.Invalid
 	this._wasConnected = false
 	this._packageNumber = 0
+	this._lastTimeoutsTimeStamp = getIsoDate()
 
 
 	this._timer = setInterval(function() {
@@ -160,7 +161,8 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 
 	var me = this
 		, connection = tcpPackageConnection({
-				endPoint: endpoint
+				connectionId: uuid.v4()
+			, endPoint: endpoint
 			})
 
 	connection.on('connect', function() {
@@ -207,13 +209,11 @@ EsConnectionLogicHandler.prototype._goToConnectedState = function() {
 
   this.emit('connect', this._tcpConnection.remoteEndpoint)
 
-/*
-  if(this._stopwatch.read() - this._lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
-    this._operations.CheckTimeoutsAndRetry(_tcpConnection)
-    this._subscriptions.CheckTimeoutsAndRetry(_tcpConnection)
-    this._lastTimeoutsTimeStamp = this._stopwatch.read()
+  if(dateDiff.fromNow(this._lastTimeoutsTimeStamp) >= this._settings.operationTimeoutCheckPeriod) {
+    this._operations.checkTimeoutsAndRetry(this._tcpConnection)
+    this._subscriptions.checkTimeoutsAndRetry(this._tcpConnection)
+    this._lastTimeoutsTimeStamp = getIsoDate()
   }
-*/
 }
 
 EsConnectionLogicHandler.prototype._isInPhase = function(connectingPhase) {
@@ -273,29 +273,32 @@ EsConnectionLogicHandler.prototype._startSubscription = function(message) {
 	this._getStateMessageHandler(startSubscriptionHandlers).call(this, message)
 }
 
-EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(connection) {
+EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(tcpConnection) {
 	if(this._tcpConnectionState === 'Init') throw new Error()
-  if(this._tcpConnectionState === 'Closed' || this._tcpConnection !== connection) {
-  	/* TODO: */
-      LogDebug('IGNORED (_state: {0}, _conn.ID: {1:B}, conn.ID: {2:B}): TCP connection to [{3}, L{4}] closed.', 
-               this._tcpConnectionState, this._tcpConnection.ConnectionId, connection.ConnectionId, 
-               connection.RemoteEndPoint, connection.LocalEndPoint)
-    
+  if(this._tcpConnectionState === 'Closed' || this._tcpConnection !== tcpConnection) {
+    LogDebug('IGNORED (_state: ' + this._tcpConnectionState
+    	+ ', _conn.ID: ' + this._tcpConnection.connectionId
+    	+ ', conn.ID: ' + tcpConnection.connectionId
+    	+ '): TCP connection to [' + tcpConnection.remoteEndpoint
+			+ ', L' + tcpConnection.localEndpoint
+			+ '] closed.')
     return
   }
 
   this._tcpConnectionState = 'Connecting'
   this._connectingPhase = connectingPhase.Reconnecting
 
-  //TODO: 
-  LogDebug('TCP connection to [{0}, L{1}, {2:B}] closed.', connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
+  LogDebug('TCP connection to [' + tcpConnection.remoteEndpoint
+			+ ', L' + tcpConnection.localEndpoint
+    	+ ', ' + tcpConnection.connectionId
+			+ '] closed.')
 
   this._subscriptions.purgeSubscribedAndDroppedSubscriptions(this._tcpConnection.connectionId)
   this._reconnInfo = new ReconnectionInfo()
 
   if(this._wasConnected) {
   	this._wasConnected = false
-    this.emit('disconnected', connection.remoteEndPoint)
+    this.emit('disconnected', tcpConnection.remoteEndpoint)
   }
 }
 
@@ -304,25 +307,31 @@ EsConnectionLogicHandler.prototype._tcpConnectionError = function(tcpConnection,
   if(this._tcpConnectionState === 'Closed') return
 
   LogDebug('TcpConnectionError connId ' + tcpConnection.connectionId
-  	+ ', exc ' + err.message
+  	+ ', exception ' + err.message
   	+ '.'
 	)
-  this.closeConnection('TCP connection error occurred.', err);
+  this._closeConnection('TCP connection error occurred.', err);
 }
 
-EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(connection) {
-	if(this._tcpConnectionState !== 'Connecting' || this._tcpConnection !== connection || connection.isClosed) {
-		/* TODO: */
-    LogDebug('IGNORED (_state {0}, _conn.Id {1:B}, conn.Id {2:B}, conn.closed {3}): TCP connection to [{4}, L{5}] established.', 
-    	this._tcpConnectionState, this._tcpConnection.ConnectionId, connection.ConnectionId, 
-     	connection.IsClosed, connection.RemoteEndPoint, connection.LocalEndPoint);
-    
+EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(tcpConnection) {
+	if(this._tcpConnectionState !== 'Connecting' || this._tcpConnection !== tcpConnection || tcpConnection.isClosed) {
+    LogDebug('IGNORED (_state ' + this._tcpConnectionState
+    	+ ', _conn.Id ' + this._tcpConnection.connectionId
+    	+ ', conn.Id ' + tcpConnection.connectionId
+    	+ ', conn.closed ' + tcpConnection.IsClosed
+    	+ '): TCP connection to [' + tcpConnection.remoteEndpoint
+			+ ', L' + tcpConnection.localEndpoint
+			+ '] established.'
+		)
     return
   }
 
-  //TODO:
-  LogDebug('TCP connection to [{0}, L{1}, {2:B}] established.', connection.RemoteEndPoint, connection.LocalEndPoint, connection.ConnectionId);
-  this._heartbeatInfo = new HeartbeatInfo(this._packageNumber, true, this._stopwatch.read());
+  LogDebug('TCP connection to [{0}' + tcpConnection.remoteEndpoint
+  	+ ', L' + tcpConnection.localEndpoint
+  	+ ', ' + tcpConnection.connectionId
+  	+ '] established.'
+	)
+  this._heartbeatInfo = new HeartbeatInfo(this._packageNumber, true, getIsoDate())
 
   if(this._settings.defaultUserCredentials) {
     this._connectingPhase = connectingPhase.Authentication;
@@ -551,20 +560,20 @@ var timerTickHandlers = {
 			Init: noOp
 		, Connecting: function() {
       	if(this._connectingPhase === connectingPhase.Reconnecting
-    		&& dateDiff(this._reconnInfo.timeStamp) >= this._settings.reconnectionDelay) {
+    		&& dateDiff.fromNow(this._reconnInfo.timeStamp) >= this._settings.reconnectionDelay) {
       		LogDebug('TimerTick checking reconnection...')
 
       		this._reconnInfo = this._reconnInfo.nextRetry()
       		if(this._settings.maxReconnections >= 0 && this._reconnInfo.reconnectionAttempt > this._settings.maxReconnections) {
-      			this.closeConnection('Reconnection limit reached.')
+      			this._closeConnection('Reconnection limit reached.')
       		} else {
-      			this.emit('reconnecting', this_esConnection)
+      			this.emit('reconnecting', this._esConnection)
       			this._discoverEndpoint()
       		}
       	}
 
       	if(this._connectingPhase === connectingPhase.Authentication
-    		&& dateDiff(this._authInfo.timeStamp) > this._settings.operationTimeout) {
+    		&& dateDiff.fromNow(this._authInfo.timeStamp) > this._settings.operationTimeout) {
       		this._raiseAuthenticationFailed('Authentication timed out.')
     			this._goToConnectedState()
       	}
@@ -575,7 +584,6 @@ var timerTickHandlers = {
 			}
 		, Connected: function() {
 			/* TODO:
-				// operations timeouts are checked only if connection is established and check period time passed
         if (this._stopwatch.read() - _lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
           // On mono even impossible connection first says that it is established
           // so clearing of reconnection count on ConnectionEstablished event causes infinite reconnections.
@@ -631,7 +639,7 @@ function ReconnectionInfo(args) {
 	Object.defineProperty(this, 'timeStamp', { value: ts })
 }
 
-ReconnectionInfo.prototype.next = function() {
+ReconnectionInfo.prototype.nextRetry = function() {
 	return new ReconnectionInfo({
 		value: this.reconnectionAttempt + 1
 	, timeStamp: getIsoDate()

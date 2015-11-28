@@ -27,8 +27,8 @@ function TcpPackageConnection(opts) {
 		receiver.processData(data)
 	})
 
-	socket.on('error', function() {
-		me.emit.apply(me, ['error'].concat(Array.prototype.slice.call(arguments, 0)))
+	socket.on('error', function(err) {
+		me.emit('error', err)
 	})
 
 	socket.on('close', function(result) {
@@ -45,9 +45,11 @@ function TcpPackageConnection(opts) {
 		})
 	})
 
-	this._socket = socket
-	this._closeCallbacks = closeCallbacks
-	
+	Object.defineProperty(this, '_closeCallbacks', { value: closeCallbacks })
+	Object.defineProperty(this, '_socket', { value: socket })
+
+	Object.defineProperty(this, 'connectionId', { value: opts.connectionId })
+
 	this.remoteEndpoint = opts.endPoint
 }
 util.inherits(TcpPackageConnection, EventEmitter)

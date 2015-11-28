@@ -98,7 +98,7 @@ function TcpConnectionError(connection, err) {
 	this.type = 'TcpConnectionError'
 	this.payload = {
 		connection: connection
-	, err: err
+	, exception: err
 	}
 }
 

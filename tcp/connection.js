@@ -17,6 +17,7 @@ var util = require('util')
 	, defaultSettings = {
 			maxReconnections: 0
 		, operationTimeout: 100
+		, operationTimeoutCheckPeriod: 100
 		, reconnectionDelay: 100
 /*
 		, defaultUserCredentials: {
