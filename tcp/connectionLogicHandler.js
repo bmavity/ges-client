@@ -16,7 +16,7 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 
 
 function LogDebug(message) {
-	console.log(message)
+	//console.log(message)
 }
 
 function LogInfo(message) {
