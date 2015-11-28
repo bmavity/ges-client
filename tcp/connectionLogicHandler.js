@@ -13,17 +13,6 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 	, Stopwatch = require('statman-stopwatch')
 	, getIsoDate = require('./getIsoDate')
 	, dateDiff = require('./isoDateDiff')
-	, defaultSettings = {
-			maxReconnections: 0
-		, operationTimeout: 100
-		, reconnectionDelay: 100
-/*
-		, defaultUserCredentials: {
-				username: 'username'
-			, passsword: 'changeit'
-			}
-*/
-		}
 
 
 function LogDebug(message) {
@@ -43,7 +32,7 @@ function noOp(message, cb) {
 
 function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	if(!(this instanceof EsConnectionLogicHandler)) {
-		return new EsConnectionLogicHandler(esConnection)
+		return new EsConnectionLogicHandler(esConnection, connectionSettings)
 	}
 
 	EventEmitter.call(this)
@@ -71,6 +60,8 @@ function EsConnectionLogicHandler(esConnection, connectionSettings) {
 
 	this._queue.registerHandler('TimerTick', function(msg) { me._timerTick() })
 
+	Object.defineProperty(this, '_settings', { value: connectionSettings })
+
 	this._handlers = {}
 
 	this._esConnection = esConnection
@@ -79,7 +70,7 @@ function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	this._state = null
 
 	this._queuedMessages = []
-	this._operations = operationsManager()
+	this._operations = operationsManager(this._esConnection.connectionName, this._settings)
 	this._subscriptions = subscriptionsManager()
 
 	this._tcpConnectionState = 'Init'
@@ -87,7 +78,6 @@ function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	this._wasConnected = false
 	this._packageNumber = 0
 
-	Object.defineProperty(this, '_settings', { value: connectionSettings || defaultSettings })
 
 	this._timer = setInterval(function() {
 		me.enqueueMessage({
@@ -358,13 +348,15 @@ var closeConnectionHandlers = {
 			Init: performCloseConnection
 		, Connecting: performCloseConnection
 		, Connected: performCloseConnection
-		, Closed: function(reason, exception) {
-				LogDebug('CloseConnection IGNORED because is ESConnection is CLOSED, reason {0}, exception {1}.', reason, exception)
+		, Closed: function(reason, err) {
+				LogDebug('CloseConnection IGNORED because is ESConnection is CLOSED, reason ' + reason
+					+ ', exception ' + (err && err.message) || err || '<no error>'
+					+ '.')
 			}
 		}
 
-function performCloseConnection(reason, exception) {
-	LogDebug('CloseConnection, reason ' + reason + ', exception ' + exception + '.');
+function performCloseConnection(reason, err) {
+	LogDebug('CloseConnection, reason ' + reason + ', exception ' + err + '.');
 
 	this._tcpConnectionState = 'Closed'
 
@@ -375,8 +367,8 @@ function performCloseConnection(reason, exception) {
 
 	LogInfo('Closed. Reason: {0}.', reason)
 
-	if(exception) {
-		this.emit('error', exception)
+	if(err) {
+		this.emit('error', err)
 	}
 
 	this._esConnection.emitClose(reason)
@@ -390,12 +382,16 @@ var handleTcpPackageHandlers = {
 		}
 
 function handleTcpPackage(connection, package) {
+	var handleMessage = 'HandleTcpPackage connId ' + this._tcpConnection.connectionId
+    	+ ', package ' + package.messageName
+    	+ ', ' + package.correlationId
+    	+ '.'
 	if(this._tcpConnection !== connection || this._tcpConnectionState === 'Closed' || this._tcpConnectionState === 'Init') {
-    LogDebug('IGNORED: HandleTcpPackage connId {0}, package {1}, {2}.', connection.ConnectionId, package.Command, package.CorrelationId)
+    LogDebug('IGNORED: ' + handleMessage)
     return
   }
             
-  LogDebug('HandleTcpPackage connId {0}, package {1}, {2}.', this._tcpConnection.ConnectionId, package.Command, package.CorrelationId)
+  LogDebug(handleMessage)
   this._packageNumber += 1
 
   if(package.messageName === 'HeartbeatResponseCommand') return
@@ -422,10 +418,15 @@ function handleTcpPackage(connection, package) {
 
   //BLM: Investigate if correlationId will be undefined or empty
   if(package.messageName === 'BadRequest' && package.correlationId === '00000000-0000-0000-0000-000000000000') {
-    //string message = Helper.EatException(() => Helper.UTF8NoBom.GetString(package.Data.Array, package.Data.Offset, package.Data.Count))
-    var exc = new Error('Bad request received from server. Error: {0}')
-      // TODOD:
-       // string.Format('Bad request received from server. Error: {0}', string.IsNullOrEmpty(message) ? '<no message>' : message));
+    var message = '<no message>'
+    try {
+    	package.payload.toString('UTF8') 
+    }
+    catch(e) {
+    	message = (e && e.message) || message
+    }
+
+    var err = new Error('Bad request received from server. Error: ' + message)
     this._closeConnection('Connection-wide BadRequest received. Too dangerous to continue.', exc)
     return
   }
@@ -500,8 +501,7 @@ var startOperationHandlers = {
 				operation.fail(new Error('EventStoreConnection is not active.'))
 			}
 		, Connecting: function(operation, maxRetries, timeout) {
-				// TODO:
-				LogDebug('StartOperation enqueue {0}, {1}, {2}, {3}.', operation, maxRetries, timeout);
+				LogDebug('StartOperation enqueue ' + operation.toString() + ', ' + maxRetries + ', ' + timeout + '.')
 				this._operations.enqueueOperation(operationsManager.item(operation, maxRetries, timeout, this._operations), function() { console.log(arguments)})
 			}
 		, Connected: function(operation, maxRetries, timeout) {

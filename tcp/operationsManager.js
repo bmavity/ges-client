@@ -1,6 +1,7 @@
 var uuid = require('node-uuid')
 	, ensure = require('../ensure')
 	, parser = require('./messageParser')
+	, getIsoDate = require('./getIsoDate')
 
 module.exports = OperationsManager
 module.exports.item = OperationItem
@@ -10,13 +11,17 @@ function LogDebug(msg) {
 }
 
 
-function OperationsManager() {
+function OperationsManager(connectionName, connectionSettings) {
 	if(!(this instanceof OperationsManager)) {
-		return new OperationsManager()
+		return new OperationsManager(connectionName, connectionSettings)
 	}
+
+	Object.defineProperty(this, '_connectionName', { value: connectionName })
+	Object.defineProperty(this, '_settings', { value: connectionSettings })
 
 	this._activeOperations = {}
 	this._waitingOperations = []
+	this._retryPendingOperations = []
 
 	this._totalOperationCount = 0
 
@@ -25,8 +30,24 @@ function OperationsManager() {
 	}
 }
 
+OperationsManager.prototype._getActive = function() {
+	var active = this._activeOperations
+	return Object.keys(active).map(function(key) { return active[key] })
+}
+
 OperationsManager.prototype.cleanUp = function() {
-	console.log('CLEANING UP')
+	var err = new Error('Connection ' + this._connectionName + ' was closed.')
+		, all = this._getActive().concat(this._waitingOperations).concat(this._retryPendingOperations)
+
+	all.forEach(function(operationItem) {
+		operationItem.operation.fail(err)
+	})
+
+  this._activeOperations = {}
+  this._waitingOperations = []
+  this._retryPendingOperations = []
+
+  this._totalOperationCount = 0
 }
 
 OperationsManager.prototype.completeActiveOperation = function(correlationId) {
@@ -50,7 +71,7 @@ OperationsManager.prototype.removeOperation = function(operationItem) {
   }
   delete this._activeOperations[correlationId]
 
-  LogDebug("RemoveOperation SUCCEEDED for {0}", operationItem.toString())
+  LogDebug('RemoveOperation SUCCEEDED for ' + operationItem.toString())
 
   this._setTotalOperationCount()
   return true
@@ -88,13 +109,13 @@ function OperationItem(operation, maxRetries, timeout) {
 	Object.defineProperty(this, 'operation', { value: operation })
 	Object.defineProperty(this, 'maxRetries', { value: maxRetries })
 	Object.defineProperty(this, 'timeout', { value: timeout })
+	Object.defineProperty(this, 'createdTime', { value: getIsoDate() })
+
+	this.retryCount = 0
+  this.lastUpdated = getIsoDate() 
 }
 
 OperationItem.prototype.toTcpMessage = function() {
-	if(!this.operation.toRequestPayload) {
-		console.log(this.operation)
-		throw new Error('Time to migrate: ' + this.operation.name)
-	}
 	return {
 		messageName: this.operation.requestMessage
 	, correlationId: this.correlationId
@@ -104,9 +125,10 @@ OperationItem.prototype.toTcpMessage = function() {
 }
 
 OperationItem.prototype.toString = function() {
-	/*
-	"Operation {0} ({1:B}): {2}, retry count: {3}, created: {4:HH:mm:ss.fff}, last updated: {5:HH:mm:ss.fff}",
-                                 Operation.GetType().Name, CorrelationId, Operation, RetryCount, CreatedTime, LastUpdated);
-*/
-	return this.operation.toString()
+	return 'Operation {0}' + this.operation.requestMessage
+		+ ' (' + this.correlationId
+		+ '): ' + this.operation.toString()
+		+ ', retry count: ' + this.retryCount
+		+ ', created: ' + this.createdTime
+		+ ', last updated: ' + this.lastUpdated
 }

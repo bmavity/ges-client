@@ -13,6 +13,18 @@ var util = require('util')
 	, streamMetadataResult = require('./streamMetadataResult')
 	, endpointDiscoverer = require('./staticEndpointDiscoverer')
 	, messages = require('./messages')
+	, ensure = require('../ensure')
+	, defaultSettings = {
+			maxReconnections: 0
+		, operationTimeout: 100
+		, reconnectionDelay: 100
+/*
+		, defaultUserCredentials: {
+				username: 'username'
+			, passsword: 'changeit'
+			}
+*/
+		}
 
 module.exports = createConnection
 
@@ -21,10 +33,11 @@ function createConnection(opts, cb) {
 	opts = opts || {}
 	opts.host = opts.host || '127.0.0.1'
 	opts.port = opts.port || 1113
-	var connection = new EsTcpConnection(endpointDiscoverer({
+	var settings = opts.settings || defaultSettings 
+		, connection = new EsTcpConnection(settings, endpointDiscoverer({
 				host: opts.host
 			, port: opts.port
-			}))
+			}), opts.connectionName)
 		, onConnect = function() {
 				connection.removeListener('connect', onConnect)
 				connection.removeListener('error', onErr)
@@ -49,15 +62,15 @@ function createConnection(opts, cb) {
 }
 
 
-function EsTcpConnection(endpointDiscoverer) {
+function EsTcpConnection(connectionSettings, endpointDiscoverer, connectionName) {
 	EventEmitter.call(this)
 
 	var me = this
 
-	this._connectionName = uuid.v4()
-	this._endpointDiscoverer = endpointDiscoverer
-
-	this._handler = connectionLogicHandler(this)
+	Object.defineProperty(this, '_connectionName', { value: connectionName || 'ES-' + uuid.v4() })
+	Object.defineProperty(this, '_endpointDiscoverer', { value: endpointDiscoverer })
+	Object.defineProperty(this, '_handler', { value: connectionLogicHandler(this, connectionSettings) })
+	Object.defineProperty(this, '_settings', { value: connectionSettings })
 
 	this._handler.on('connect', function(args) {
 		me.emit.apply(me, ['connect', args])
