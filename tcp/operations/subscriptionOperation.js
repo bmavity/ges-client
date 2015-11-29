@@ -18,6 +18,10 @@ var util = require('util')
 		, Unknown: { value: 100 }
 		})
 
+function LogDebug(msg) {
+	console.log(msg)
+}
+
 module.exports = SubscriptionOperation
 Object.defineProperty(module.exports, 'dropReason', { value: dropReason })
 
@@ -55,7 +59,7 @@ function SubscriptionOperation(subscriptionData, getConnection) {
 
 	Object.defineProperty(this, '_resolveLinkTos', { value: !!subscription.data.resolveLinkTos })
 
-	Object.defineProperty(this, '_log', { value: null })
+	Object.defineProperty(this, '_log', { value: { debug: LogDebug } })
 	Object.defineProperty(this, '_verboseLogging', { value: null })
 	Object.defineProperty(this, '_getConnection', { value: getConnection })
 
@@ -172,6 +176,10 @@ SubscriptionOperation.prototype.finish = function(message) {
 }
 
 SubscriptionOperation.prototype.inspectPackage = function(package) {
+  if(package.messageName === 'NotAuthenticated') return this.inspectNotAuthenticated(package)
+  if(package.messageName === 'BadRequest') return this.inspectBadRequest(package)
+  if(package.messageName === 'NotHandled') return this.inspectNotHandled(package)
+
 	var inspector = packageInspectors[package.messageName]
 	if(!inspector) {
 		this.dropSubscription('ServerError', new Error('Unexpected Command: ' + package.messageName));
@@ -186,6 +194,44 @@ SubscriptionOperation.prototype.inspectPackage = function(package) {
     this.dropSubscription('Unknown', err)
     return inspection(inspection.decision.EndOperation, 'Exception - ' + err.message)
   }
+}
+
+SubscriptionOperation.prototype.inspectNotAuthenticated = function(package) {
+	var message = package.payload.toString('UTF8') || 'Authentication error'
+  this.dropSubscription('NotAuthenticated', new Error('Not Authenticated [ ' + message + ' ]'))
+  return new inspection(inspection.decision.EndOperation, 'NotAuthenticated')
+}
+
+SubscriptionOperation.prototype.inspectBadRequest = function(package) {
+	var message = package.payload.toString('UTF8') || '<no message>'
+  this.dropSubscription('ServerError', new Error('Server Error [ ' + message + ' ]'))
+  return new inspection(inspection.decision.EndOperation, 'BadRequest: ' + message)
+}
+
+SubscriptionOperation.prototype.inspectNotHandled = function(package) {
+	/* BLM: Decide with subscriptiobn callback decision
+	if (_subscription != null)
+        throw new Exception("NotHandled command appeared while we already subscribed.");
+  */
+	var message = messageParser.parse('NotHandled', package.payload)
+	switch(message.reason) {
+		case notHandledReason.NotReady:
+			return new inspection(inspection.decision.Retry, 'NotHandled - NotReady')
+			break
+		case notHandledReason.TooBusy:
+			return new inspection(inspection.decision.Retry, 'NotHandled - TooBusy')
+			break
+		case notHandledReason.NotMaster:
+			var masterInfo = messageParser.parse('NotHandled.MasterInfo', message.masterInfo)
+			return new inspection(inspection.decision.Reconnect, 'NotHandled - NotMaster'
+			, masterInfo.externalTcpEndPoint
+			, masterInfo.externalSecureTcpEndPoint
+			)
+			break
+		default:
+			LogDebug('Unknown NotHandledReason: ' + message.reason + '.')
+			return new inspection(inspection.decision.Retry, 'NotHandled - <unknown>')
+	}
 }
 
 SubscriptionOperation.prototype.subscribe = function(correlationId, tcpConnection) {
@@ -211,70 +257,6 @@ SubscriptionOperation.prototype.unsubscribe = function() {
 }
 
 
-
-/*
-          case TcpCommand.SubscriptionDropped:
-          {
-              var dto = package.Data.Deserialize<ClientMessage.SubscriptionDropped>();
-              switch (dto.Reason)
-              {
-                  case ClientMessage.SubscriptionDropped.SubscriptionDropReason.Unsubscribed:
-                      DropSubscription(SubscriptionDropReason.UserInitiated, null);
-                      break;
-                  case ClientMessage.SubscriptionDropped.SubscriptionDropReason.AccessDenied:
-                      DropSubscription(SubscriptionDropReason.AccessDenied, 
-                                       new AccessDeniedException(string.Format("Subscription to '{0}' failed due to access denied.", _streamId == string.Empty ? "<all>" : _streamId)));
-                      break;
-                  default: 
-                      if (_verboseLogging) _log.Debug("Subscription dropped by server. Reason: {0}.", dto.Reason);
-                      DropSubscription(SubscriptionDropReason.Unknown, 
-                                       new CommandNotExpectedException(string.Format("Unsubscribe reason: '{0}'.", dto.Reason)));
-                      break;
-              }
-              return new InspectionResult(InspectionDecision.EndOperation, string.Format("SubscriptionDropped: {0}", dto.Reason));
-          }
-
-          case TcpCommand.NotAuthenticated:
-          {
-              string message = Helper.EatException(() => Helper.UTF8NoBom.GetString(package.Data.Array, package.Data.Offset, package.Data.Count));
-              DropSubscription(SubscriptionDropReason.NotAuthenticated,
-                               new NotAuthenticatedException(string.IsNullOrEmpty(message) ? "Authentication error" : message));
-              return new InspectionResult(InspectionDecision.EndOperation, "NotAuthenticated");
-          }
-
-          case TcpCommand.BadRequest:
-          {
-              string message = Helper.EatException(() => Helper.UTF8NoBom.GetString(package.Data.Array, package.Data.Offset, package.Data.Count));
-              DropSubscription(SubscriptionDropReason.ServerError, 
-                               new ServerErrorException(string.IsNullOrEmpty(message) ? "<no message>" : message));
-              return new InspectionResult(InspectionDecision.EndOperation, string.Format("BadRequest: {0}", message));
-          }
-
-          case TcpCommand.NotHandled:
-          {
-              if (_subscription != null)
-                  throw new Exception("NotHandled command appeared while we already subscribed.");
-
-              var message = package.Data.Deserialize<ClientMessage.NotHandled>();
-              switch (message.Reason)
-              {
-                  case ClientMessage.NotHandled.NotHandledReason.NotReady:
-                      return new InspectionResult(InspectionDecision.Retry, "NotHandled - NotReady");
-
-                  case ClientMessage.NotHandled.NotHandledReason.TooBusy:
-                      return new InspectionResult(InspectionDecision.Retry, "NotHandled - TooBusy");
-
-                  case ClientMessage.NotHandled.NotHandledReason.NotMaster:
-                      var masterInfo = message.AdditionalInfo.Deserialize<ClientMessage.NotHandled.MasterInfo>();
-                      return new InspectionResult(InspectionDecision.Reconnect, "NotHandled - NotMaster",
-                                                  masterInfo.ExternalTcpEndPoint, masterInfo.ExternalSecureTcpEndPoint);
-
-                  default:
-                      _log.Error("Unknown NotHandledReason: {0}.", message.Reason);
-                      return new InspectionResult(InspectionDecision.Retry, "NotHandled - <unknown>");
-              }
-          }
-  */
 var packageInspectors = {
   SubscriptionConfirmation: {
   	responseType: 'SubscriptionConfirmation'
@@ -292,45 +274,34 @@ var packageInspectors = {
   , inspect: function(payload, subscription) {
   		console.log('sub dropped: ', payload, payload.reason)
 
-  		this.dropSubscription(dropReason.UserInitiated, null)
+  		switch(payload.reason) {
+  			case dropReason.Unsubscribed:
+		  		this.dropSubscription(dropReason.UserInitiated, null)
+  				break
+  			case dropReason.AccessDenied:
+  				var stream = this._stream || '<all>' 
+  					, err = new Error('Subscription to "' + stream + '" failed due to access denied.')
+		  		this.dropSubscription(dropReason.AccessDenied, null)
+  				break
+  			default:
+  				if(this._verboseLogging) {
+  					this._log.debug('Subscription dropped by server. Reason: ' + payload.reason + '.')
+  				}
+  				var err = new Error('Command Not Expected [ Unsubscribe reason: "' + payload.reason + '" ]')
+		  		this.dropSubscription(dropReason.Unknown, err)
+  		}
+
       return inspection(inspection.decision.EndOperation, 'SubscriptionDropped' + payload.reason)
 	  }
 	}
 , StreamEventAppeared: {
   	responseType: 'StreamEventAppeared'
   , inspect: function(payload, subscription) {
-  	/*
-  	var dto = package.Data.Deserialize<ClientMessage.StreamEventAppeared>();
-              EventAppeared(new ResolvedEvent(dto.Event));
-              return new InspectionResult(InspectionDecision.DoNothing, "StreamEventAppeared");
-              */
       this.eventAppeared(eventPayloads.toResolvedEvent(payload.event))
 
       return inspection(inspection.decision.DoNothing, 'StreamEventAppeared')
 	  }
 	}
-/*
-case TcpCommand.SubscriptionDropped:
-          {
-              var dto = package.Data.Deserialize<ClientMessage.SubscriptionDropped>();
-              switch (dto.Reason)
-              {
-                  case ClientMessage.SubscriptionDropped.SubscriptionDropReason.Unsubscribed:
-                      DropSubscription(SubscriptionDropReason.UserInitiated, null);
-                      break;
-                  case ClientMessage.SubscriptionDropped.SubscriptionDropReason.AccessDenied:
-                      DropSubscription(SubscriptionDropReason.AccessDenied, 
-                                       new AccessDeniedException(string.Format("Subscription to '{0}' failed due to access denied.", _streamId == string.Empty ? "<all>" : _streamId)));
-                      break;
-                  default: 
-                      if (_verboseLogging) _log.Debug("Subscription dropped by server. Reason: {0}.", dto.Reason);
-                      DropSubscription(SubscriptionDropReason.Unknown, 
-                                       new CommandNotExpectedException(string.Format("Unsubscribe reason: '{0}'.", dto.Reason)));
-                      break;
-              }
-              return new InspectionResult(InspectionDecision.EndOperation, string.Format("SubscriptionDropped: {0}", dto.Reason));
-          }
-*/
 }
 
 var responseHandlers = {
