@@ -78,7 +78,7 @@ OperationBase.prototype.inspectNotHandled = function(package) {
 			break
 		case notHandledReason.NotMaster:
 			var masterInfo = messageParser.parse('NotHandled.MasterInfo', message.masterInfo)
-			return new inspection(inspection.decision.Reconnect, 'NotHandled - TooBusy'
+			return new inspection(inspection.decision.Reconnect, 'NotHandled - NotMaster'
 			, masterInfo.externalTcpEndPoint
 			, masterInfo.externalSecureTcpEndPoint
 			)
