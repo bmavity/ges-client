@@ -189,8 +189,8 @@ OperationItem.prototype.toTcpMessage = function() {
 }
 
 OperationItem.prototype.toString = function() {
-	return 'Operation {0}' + this.operation.requestMessage
-		+ ' (' + this.correlationId
+	return 'Operation "' + this.operation.requestMessage
+		+ '" (' + this.correlationId
 		+ '): ' + this.operation.toString()
 		+ ', retry count: ' + this.retryCount
 		+ ', created: ' + this.createdTime

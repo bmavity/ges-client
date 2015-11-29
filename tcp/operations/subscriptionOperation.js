@@ -20,7 +20,7 @@ var util = require('util')
 		})
 
 function LogDebug(msg) {
-	console.log(msg)
+	//console.log(msg)
 }
 
 module.exports = SubscriptionOperation
@@ -252,6 +252,10 @@ SubscriptionOperation.prototype.subscribe = function(correlationId, tcpConnectio
   return true
 }
 
+SubscriptionOperation.prototype.toString = function() {
+	return 'SubscriptionOperation on ' + this._stream
+}
+
 SubscriptionOperation.prototype.unsubscribe = function() {
 	this.dropSubscription('UserInitiated', null, this._getConnection());
 }
@@ -272,8 +276,6 @@ var packageInspectors = {
 , SubscriptionDropped: {
   	responseType: 'SubscriptionDropped'
   , inspect: function(payload, subscription) {
-  		console.log('sub dropped: ', payload, payload.reason)
-
   		switch(payload.reason) {
   			case dropReason.Unsubscribed:
 		  		this.dropSubscription(dropReason.UserInitiated, null)

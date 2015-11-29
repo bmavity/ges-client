@@ -6,7 +6,7 @@ var inspection = require('./inspection')
 module.exports.OperationBase = OperationBase
 
 function LogDebug(msg) {
-	console.log(message)
+	//console.log(message)
 }
 
 

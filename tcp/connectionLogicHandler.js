@@ -259,29 +259,33 @@ EsConnectionLogicHandler.prototype._raiseAuthenticationFailed = function(reason)
 	})
 }
 
-EsConnectionLogicHandler.prototype._reconnectTo = function(reason) {
-	/*
-	IPEndPoint endPoint = _settings.UseSslConnection
-                                          ? endPoints.SecureTcpEndPoint ?? endPoints.TcpEndPoint
-                                          : endPoints.TcpEndPoint;
-            if (endPoint == null)
-            {
-                CloseConnection("No end point is specified while trying to reconnect.");
-                return;
-            }
+EsConnectionLogicHandler.prototype._reconnectTo = function(endpoints) {
+	var endpoint = this._settings.useSslConnection
+				? endpoints.secureTcpEndpoint || endpoints.tcpEndpoint
+				: endpoints.tcpEndpoint
 
-            if (_state != ConnectionState.Connected || _connection.RemoteEndPoint.Equals(endPoint))
-                return;
+	if(!endpoint) {
+		this._closeConnection('No end point is specified while trying to reconnect.')
+		return
+	}
 
-            var msg = string.Format("EventStoreConnection '{0}': going to reconnect to [{1}]. Current endpoint: [{2}, L{3}].",
-                                    _esConnection.ConnectionName, endPoint, _connection.RemoteEndPoint, _connection.LocalEndPoint);
-            if (_settings.VerboseLogging) _settings.Log.Info(msg);
-            CloseTcpConnection(msg);
+	if(this._tcpConnectionState !== 'Connecting' || this._tcpConnection.remoteEndpoint.equals(endpoint)) return
 
-            _state = ConnectionState.Connecting;
-            _connectingPhase = ConnectingPhase.EndPointDiscovery;
-            EstablishTcpConnection(endPoints);
-            */
+	var message = 'EventStoreConnection ' + this._esConnection.connectionName
+				+ ': going to reconnect to [ ' + endpoint.toString()
+				+ ' ]. Current endpoint: [ ' + this._tcpConnectionState.remoteEndpoint.toString()
+				+ ', L' + this._tcpConnection.localEndpoint.toString()
+				+ ' ].'
+
+	if(this._settings.verboseLogging) {
+		this._settings.Log.Info(message)
+	}
+
+	this._closeTcpConnection(message)
+
+	this._tcpConnectionState = 'Connecting'
+	this._connectingPhase = connectingPhase.EndPointDiscovery
+	this._establishTcpConnection(endpoints)
 }
 
 EsConnectionLogicHandler.prototype._startConnection = function(endpointDiscoverer, cb) {
@@ -451,7 +455,11 @@ function handleTcpPackage(connection, package) {
   }
 
   //BLM: Investigate if correlationId will be undefined or empty
-  if(package.messageName === 'BadRequest' && package.correlationId === '00000000-0000-0000-0000-000000000000') {
+  if(package.messageName === 'BadRequest') {
+  console.log('connection logic handler line 458')
+  	console.log(package)
+  }
+  if(package.messageName === 'BadRequest' && !package.correlationId) {
     var message = '<no message>'
     try {
     	package.payload.toString('UTF8') 
@@ -482,7 +490,10 @@ function handleTcpPackage(connection, package) {
         this._operations.scheduleOperationRetry(operationItem)
         break
       case inspection.decision.Reconnect:
-        this._reconnectTo(result.tcpEndpoint, result.secureTcpEndpoint)
+        this._reconnectTo({
+					tcpEndpoint: result.tcpEndpoint
+				, secureTcpEndpoint: result.secureTcpEndpoint
+				})
         this._operations.scheduleOperationRetry(operationItem)
         break
       default: throw new Error('Unknown inspection.decision: ' + result.decision)
@@ -506,7 +517,10 @@ function handleTcpPackage(connection, package) {
         this._subscriptions.scheduleSubscriptionRetry(subscriptionItem);
         break
       case inspection.decision.Reconnect:
-        this._reconnectTo(result.TcpEndPoint, result.SecureTcpEndPoint)
+        this._reconnectTo({
+					tcpEndpoint: result.tcpEndpoint
+				, secureTcpEndpoint: result.secureTcpEndpoint
+				})
         this._subscriptions.scheduleSubscriptionRetry(subscriptionItem)
         break
       case inspection.decision.Subscribed:
@@ -515,7 +529,11 @@ function handleTcpPackage(connection, package) {
       default: throw new Error('Unknown inspection.decision: ' + result.decision)
     }
   } else {
-    LogDebug('HandleTcpPackage UNMAPPED PACKAGE with CorrelationId {0:B}, Command: {1}', package.CorrelationId, package.Command);
+	  console.log('connection logic handler line 532')
+  	console.log(package)
+    LogDebug('HandleTcpPackage UNMAPPED PACKAGE with CorrelationId ' + package.correlationId
+    	+ ', Command: ', package.messageName
+    )
   }
 }
 

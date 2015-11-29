@@ -18,7 +18,7 @@ var util = require('util')
 			heartbeatInterval: 3000
 		, heartbeatTimeout: 3000
 		, maxReconnections: 0
-		, operationTimeout: 100
+		, operationTimeout: 1000
 		, operationTimeoutCheckPeriod: 100
 		, reconnectionDelay: 100
 /*
