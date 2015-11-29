@@ -70,7 +70,7 @@ function EsTcpConnection(connectionSettings, endpointDiscoverer, connectionName)
 
 	var me = this
 
-	Object.defineProperty(this, '_connectionName', { value: connectionName || 'ES-' + uuid.v4() })
+	Object.defineProperty(this, 'connectionName', { value: connectionName || 'ES-' + uuid.v4() })
 	Object.defineProperty(this, '_endpointDiscoverer', { value: endpointDiscoverer })
 	Object.defineProperty(this, '_handler', { value: connectionLogicHandler(this, connectionSettings) })
 	Object.defineProperty(this, '_settings', { value: connectionSettings })
