@@ -1,6 +1,7 @@
 var net = require('net')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
+	, endpoint = require('./endpoint')
 	, framer = require('./lengthPrefixMessageFramer')
 	, messageReceiver = require('./messageReceiver')
 
@@ -47,8 +48,8 @@ function TcpPackageConnection(opts) {
 	Object.defineProperty(this, 'connectionId', { value: opts.connectionId })
 
 	this.isClosed = false
-	this.localEndpoint = new Endpoint()
-	this.remoteEndpoint = new Endpoint(opts.endPoint.host, opts.endPoint.port)
+	this.localEndpoint = new endpoint()
+	this.remoteEndpoint = new endpoint(opts.endPoint.host, opts.endPoint.port)
 }
 util.inherits(TcpPackageConnection, EventEmitter)
 
@@ -75,11 +76,4 @@ TcpPackageConnection.prototype.enqueueSend = function(packetData) {
 }
 
 
-function Endpoint(host, port) {
-	Object.defineProperty(this, 'host', { value: host })
-	Object.defineProperty(this, 'port', { value: port })
-}
 
-Endpoint.prototype.toString = function() {
-	return this.host ? this.host + ':' + this.port : '<empty endpoint>'
-}

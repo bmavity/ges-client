@@ -78,10 +78,9 @@ OperationBase.prototype.inspectNotHandled = function(package) {
 			break
 		case notHandledReason.NotMaster:
 			var masterInfo = messageParser.parse('NotHandled.MasterInfo', message.masterInfo)
-			return new inspection(inspection.decision.Reconnect, 'NotHandled - NotMaster'
-			, masterInfo.externalTcpEndPoint
-			, masterInfo.externalSecureTcpEndPoint
-			)
+				, tcpEndpoint = endpoint(masterInfo.externalTcpAddress, masterInfo.externalTcpPort)
+				, secureTcpEndpoint = endpoint(masterInfo.externalSecureTcpAddress, masterInfo.externalSecureTcpPort)
+			return new inspection(inspection.decision.Reconnect, 'NotHandled - NotMaster', tcpEndpoint, secureTcpEndpoint)
 			break
 		default:
 			LogDebug('Unknown NotHandledReason: ' + message.reason + '.')
