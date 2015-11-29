@@ -36,6 +36,8 @@ describe('deleting_stream', function() {
 		    	}
     	connection.deleteStream(stream, deleteData, function(err) {
     		(err === null).should.be.true
+
+    		connection.close()
     		done()
     	})
     })
@@ -51,6 +53,8 @@ describe('deleting_stream', function() {
 		    	}
     	connection.deleteStream(stream, deleteData, function(err) {
     		(err === null).should.be.true
+
+    		connection.close()
     		done()
     	})
     })
@@ -66,6 +70,8 @@ describe('deleting_stream', function() {
 		    	}
     	connection.deleteStream(stream, deleteData, function(err) {
     		(err === null).should.be.false
+    		
+    		connection.close()
     		done()
     	})
     })
@@ -83,6 +89,8 @@ describe('deleting_stream', function() {
 
     		result.LogPosition.PreparePosition.should.be.greaterThan(0)
     		result.LogPosition.CommitPosition.should.be.greaterThan(0)
+
+    		connection.close()
     		done()
     	})
     })

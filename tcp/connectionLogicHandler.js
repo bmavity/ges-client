@@ -10,7 +10,6 @@ var tcpPackageConnection = require('./tcpPackageConnection')
 	, util = require('util')
 	, EventEmitter = require('events').EventEmitter
 	, uuid = require('node-uuid')
-	, Stopwatch = require('statman-stopwatch')
 	, getIsoDate = require('./getIsoDate')
 	, dateDiff = require('./isoDateDiff')
 
@@ -40,7 +39,6 @@ function EsConnectionLogicHandler(esConnection, connectionSettings) {
 	var me = this
 
 	this._queue = createQueue()
-	this._stopwatch = new Stopwatch(true)
 
 	this._queue.registerHandler('StartConnection', function(msg) { me._startConnection(msg.endpointDiscoverer, msg.cb) })
 	this._queue.registerHandler('CloseConnection', function(msg) { me._closeConnection(msg.reason, msg.exception) })
@@ -151,7 +149,6 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 		return
 	}
 
-	//TODO: 
 	LogDebug('EstablishTcpConnection to [' + endpoint.host + ':' + endpoint.port + ']')
 
 	if(this._tcpConnectionState !== 'Connecting') return
@@ -160,28 +157,29 @@ EsConnectionLogicHandler.prototype._establishTcpConnection = function(endpoints)
 	this._connectingPhase = connectingPhase.ConnectionEstablishing
 
 	var me = this
-		, connection = tcpPackageConnection({
+		, tcpConnection = tcpPackageConnection({
 				connectionId: uuid.v4()
 			, endPoint: endpoint
 			})
 
-	connection.on('connect', function() {
-		me.enqueueMessage(messages.tcpConnectionEstablished(connection))
+	tcpConnection.on('connect', function() {
+		me.enqueueMessage(messages.tcpConnectionEstablished(tcpConnection))
 	})
 
-	connection.on('package', function(data) {
+	tcpConnection.on('package', function(data) {
 		me.enqueueMessage(messages.handleTcpPackage(data.connection, data.package))
 	})
 
-	connection.on('error', function(err) {
-		me.enqueueMessage(messages.tcpConnectionError(connection, err))
+	tcpConnection.on('error', function(err) {
+		me.enqueueMessage(messages.tcpConnectionError(tcpConnection, err))
 	})
 
-	connection.on('close', function() {
-		me.enqueueMessage(messages.tcpConnectionClosed(connection))
+	tcpConnection.on('close', function() {
+		console.log("CALLING THIS NOW")
+		me.enqueueMessage(messages.tcpConnectionClosed(tcpConnection))
 	})
 
-	this._tcpConnection = connection
+	this._tcpConnection = tcpConnection
 }
 
 EsConnectionLogicHandler.prototype._getStateMessageHandler = function(stateMessages) {
@@ -223,26 +221,28 @@ EsConnectionLogicHandler.prototype._isInPhase = function(connectingPhase) {
 EsConnectionLogicHandler.prototype._manageHeartbeats = function() {
 	if(this._tcpConnection === null) throw new Error('Trying to process heartbeat message when connection is null.')
 
-  var timeout = 2000 //this._heartbeatInfo.IsIntervalStage ? this._settings.HeartbeatInterval : this._settings.HeartbeatTimeout
-  if(this._stopwatch.read() - this._heartbeatInfo.TimeStamp < timeout) return
+  var timeout = this._heartbeatInfo.isIntervalStage
+				? this._settings.heartbeatInterval
+				: this._settings.heartbeatTimeout
+  if(dateDiff.fromNow(this._heartbeatInfo.timeStamp) < timeout) return
 
   var packageNumber = this._packageNumber
-  if(this._heartbeatInfo.LastPackageNumber !== packageNumber) {
-    this._heartbeatInfo = new HeartbeatInfo(packageNumber, true, this._stopwatch.read())
+  if(this._heartbeatInfo.lastPackageNumber !== packageNumber) {
+    this._heartbeatInfo = new HeartbeatInfo(packageNumber, true, getIsoDate())
     return
   }
 
-  if(this._heartbeatInfo.IsIntervalStage) {
+  if(this._heartbeatInfo.isIntervalStage) {
     // TcpMessage.Heartbeat analog
     this._tcpConnection.enqueueSend({
 			messageName: 'HeartbeatRequestCommand'
 		, correlationId: uuid.v4()
 		})
-    this._heartbeatInfo = new HeartbeatInfo(this._heartbeatInfo.LastPackageNumber, false, this._stopwatch.read())
+    this._heartbeatInfo = new HeartbeatInfo(this._heartbeatInfo.lastPackageNumber, false, getIsoDate())
   } else {
     var message = 'EventStoreConnection "' + this._esConnection.connectionName
-    	+ '": closing TCP connection [' + this._tcpConnection.remoteEndpoint
-    	+ ', ' + this._tcpConnection.localEndpoint
+    	+ '": closing TCP connection [' + this._tcpConnection.remoteEndpoint.toString()
+    	+ ', ' + this._tcpConnection.localEndpoint.toString()
     	+ ', ' + this._tcpConnection.connectionId
     	+ '] due to HEARTBEAT TIMEOUT at pkgNum ' + packageNumber
     	+ '.'
@@ -279,8 +279,8 @@ EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(tcpConnection
     LogDebug('IGNORED (_state: ' + this._tcpConnectionState
     	+ ', _conn.ID: ' + this._tcpConnection.connectionId
     	+ ', conn.ID: ' + tcpConnection.connectionId
-    	+ '): TCP connection to [' + tcpConnection.remoteEndpoint
-			+ ', L' + tcpConnection.localEndpoint
+    	+ '): TCP connection to [' + tcpConnection.remoteEndpoint.toString()
+			+ ', L' + tcpConnection.localEndpoint.toString()
 			+ '] closed.')
     return
   }
@@ -288,8 +288,8 @@ EsConnectionLogicHandler.prototype._tcpConnectionClosed = function(tcpConnection
   this._tcpConnectionState = 'Connecting'
   this._connectingPhase = connectingPhase.Reconnecting
 
-  LogDebug('TCP connection to [' + tcpConnection.remoteEndpoint
-			+ ', L' + tcpConnection.localEndpoint
+  LogDebug('TCP connection to [' + tcpConnection.remoteEndpoint.toString()
+			+ ', L' + tcpConnection.localEndpoint.toString()
     	+ ', ' + tcpConnection.connectionId
 			+ '] closed.')
 
@@ -319,15 +319,15 @@ EsConnectionLogicHandler.prototype._tcpConnectionEstablished = function(tcpConne
     	+ ', _conn.Id ' + this._tcpConnection.connectionId
     	+ ', conn.Id ' + tcpConnection.connectionId
     	+ ', conn.closed ' + tcpConnection.IsClosed
-    	+ '): TCP connection to [' + tcpConnection.remoteEndpoint
-			+ ', L' + tcpConnection.localEndpoint
+    	+ '): TCP connection to [' + tcpConnection.remoteEndpoint.toString()
+			+ ', L' + tcpConnection.localEndpoint.toString()
 			+ '] established.'
 		)
     return
   }
 
-  LogDebug('TCP connection to [{0}' + tcpConnection.remoteEndpoint
-  	+ ', L' + tcpConnection.localEndpoint
+  LogDebug('TCP connection to [' + tcpConnection.remoteEndpoint.toString()
+  	+ ', L' + tcpConnection.localEndpoint.toString()
   	+ ', ' + tcpConnection.connectionId
   	+ '] established.'
 	)
@@ -374,7 +374,7 @@ function performCloseConnection(reason, err) {
 	this._subscriptions.cleanUp()
 	this._closeTcpConnection(reason)
 
-	LogInfo('Closed. Reason: {0}.', reason)
+	LogInfo('Closed. Reason: ' + reason + '.')
 
 	if(err) {
 		this.emit('error', err)
@@ -583,17 +583,12 @@ var timerTickHandlers = {
 	      }
 			}
 		, Connected: function() {
-			/* TODO:
-        if (this._stopwatch.read() - _lastTimeoutsTimeStamp >= _settings.OperationTimeoutCheckPeriod) {
-          // On mono even impossible connection first says that it is established
-          // so clearing of reconnection count on ConnectionEstablished event causes infinite reconnections.
-          // So we reset reconnection count to zero on each timeout check period when connection is established
-          _reconnInfo = new ReconnectionInfo(0, this._stopwatch.read())
-          _operations.CheckTimeoutsAndRetry(_tcpConnection)
-          _subscriptions.CheckTimeoutsAndRetry(_tcpConnection)
-          _lastTimeoutsTimeStamp = this._stopwatch.read()
+        if(dateDiff.fromNow(this._lastTimeoutsTimeStamp) >= this._settings.operationTimeoutCheckPeriod) {
+        	this._reconnInfo = new ReconnectionInfo()
+        	this._operations.checkTimeoutsAndRetry(this._tcpConnection)
+        	this._subscriptions.checkTimeoutsAndRetry(this._tcpConnection)
+        	this._lastTimeoutsTimeStamp = getIsoDate()
         }
-        */
         this._manageHeartbeats()
 			}
 		, Closed: noOp
@@ -626,9 +621,9 @@ ReconnectionInfo.prototype.next = function() {
 
 
 function HeartbeatInfo(lastPackageNumber, isIntervalStage, timeStamp) {
-	Object.defineProperty(this, 'LastPackageNumber', { value: lastPackageNumber })
-	Object.defineProperty(this, 'IsIntervalStage', { value: isIntervalStage })
-	Object.defineProperty(this, 'TimeStamp', { value: timeStamp })
+	Object.defineProperty(this, 'lastPackageNumber', { value: lastPackageNumber })
+	Object.defineProperty(this, 'isIntervalStage', { value: isIntervalStage })
+	Object.defineProperty(this, 'timeStamp', { value: timeStamp })
 }
 
 

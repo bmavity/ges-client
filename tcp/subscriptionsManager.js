@@ -15,7 +15,7 @@ module.exports = SubscriptionsManager
 module.exports.item = SubscriptionItem
 
 function LogDebug(msg) {
-	console.log(msg)
+	//console.log(msg)
 }
 
 function SubscriptionsManager(connectionName, connectionSettings) {

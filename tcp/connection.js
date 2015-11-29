@@ -15,7 +15,9 @@ var util = require('util')
 	, messages = require('./messages')
 	, ensure = require('../ensure')
 	, defaultSettings = {
-			maxReconnections: 0
+			heartbeatInterval: 3000
+		, heartbeatTimeout: 3000
+		, maxReconnections: 0
 		, operationTimeout: 100
 		, operationTimeoutCheckPeriod: 100
 		, reconnectionDelay: 100
@@ -138,7 +140,7 @@ EsTcpConnection.prototype.connect = function() {
 }
 
 EsTcpConnection.prototype.enqueueOperation = function(operationData) {
-	this._handler.enqueueMessage(messages.startOperation(operationData, 0, 10000))
+	this._handler.enqueueMessage(messages.startOperation(operationData, 3, 10000))
 }
 
 EsTcpConnection.prototype.isInState = function(stateName) {

@@ -137,7 +137,7 @@ OperationsManager.prototype.scheduleOperationRetry = function(operationItem) {
   LogDebug('ScheduleOperationRetry for ' + operationItem.toString())
 
   if(operationItem.maxRetries >= 0 && operationItem.retryCount >= operationItem.maxRetries) {
-    var err = new Error('Retries limit reached ' + operationItem.ToString() + ', retryCount: ' + operationItem.retryCount)
+    var err = new Error('Retries limit reached ' + operationItem.toString() + ', retryCount: ' + operationItem.retryCount)
     operationItem.operation.fail(err)
     return
   }

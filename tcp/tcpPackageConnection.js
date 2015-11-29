@@ -15,7 +15,6 @@ function TcpPackageConnection(opts) {
 	EventEmitter.call(this)
 
 	var socket = net.connect(opts.endPoint)
-		, closeCallbacks = []
 		, receiver = messageReceiver()
 		, me = this
 
@@ -32,9 +31,7 @@ function TcpPackageConnection(opts) {
 	})
 
 	socket.on('close', function(result) {
-		closeCallbacks.forEach(function(cb) {
-			cb(null)
-		})
+		me.isClosed = true
 		me.emit.call(me, 'close', result)
 	})
 
@@ -45,23 +42,29 @@ function TcpPackageConnection(opts) {
 		})
 	})
 
-	Object.defineProperty(this, '_closeCallbacks', { value: closeCallbacks })
 	Object.defineProperty(this, '_socket', { value: socket })
 
 	Object.defineProperty(this, 'connectionId', { value: opts.connectionId })
 
-	this.remoteEndpoint = opts.endPoint
+	this.isClosed = false
+	this.localEndpoint = new Endpoint()
+	this.remoteEndpoint = new Endpoint(opts.endPoint.host, opts.endPoint.port)
 }
 util.inherits(TcpPackageConnection, EventEmitter)
 
 
 TcpPackageConnection.prototype.cleanup = function() {
+	this._socket.removeAllListeners()
 	this.removeAllListeners()
 }
 
 TcpPackageConnection.prototype.close = function(reason, cb) {
-	//BLM: TODO - Compare this to C#
-	this._closeCallbacks.push(cb)
+	var me = this
+	this._socket.removeAllListeners('close')
+	this._socket.on('close', function(result) {
+		me.isClosed = true
+		cb()
+	})
 	this._socket.destroy()
 }
 
@@ -69,4 +72,14 @@ TcpPackageConnection.prototype.enqueueSend = function(packetData) {
 	var packet = framer.frame(packetData.messageName, packetData.correlationId, packetData.payload, packetData.userCredentials)
 
 	this._socket.write(packet)
+}
+
+
+function Endpoint(host, port) {
+	Object.defineProperty(this, 'host', { value: host })
+	Object.defineProperty(this, 'port', { value: port })
+}
+
+Endpoint.prototype.toString = function() {
+	return this.host ? this.host + ':' + this.port : '<empty endpoint>'
 }
