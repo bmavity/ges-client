@@ -3,6 +3,10 @@ var inspection = require('./inspection')
 
 module.exports.OperationBase = OperationBase
 
+function LogDebug(msg) {
+	console.log(message)
+}
+
 
 function OperationBase(operationData) {
 	Object.defineProperty(this, 'userCredentials', { value: operationData.auth })
@@ -85,20 +89,22 @@ OperationBase.prototype.inspectNotHandled = function(package) {
 }
 
 OperationBase.prototype.inspectUnexpectedCommand = function(package, expectedCommand) {
-	/*
-	if (package.Command == expectedCommand)
-                throw new ArgumentException(string.Format('Command shouldn't be {0}.', package.Command))
+	if(package.messageName === expectedCommand) {
+		throw new Error("Command shouldn't be " + package.messageName)
+	}
 
-            Log.Error('Unexpected TcpCommand received.\n'
-                      + 'Expected: {0}, Actual: {1}, Flags: {2}, CorrelationId: {3}\n'
-                      + 'Operation ({4}): {5}\n'
-                      +'TcpPackage Data Dump:\n{6}', 
-                      expectedCommand, package.Command, package.Flags, package.CorrelationId, 
-                      GetType().Name, this, Helper.FormatBinaryDump(package.Data))
+	LogDebug('Unexpected TcpCommand received.\n'
+    + 'Expected: ' + expectedCommand
+    + ', Actual: ' + package.messageName
+    + ', Flags: ' + package.flags
+    + ', CorrelationId: ' + package.correlationId
+    + '\nOperation (' + this.requestMessage
+    + '): ' + this.toString()
+		+ '\nTcpPackage Data Dump:\n' + package.payload.toString()
+	)
 
-            Fail(new CommandNotExpectedException(expectedCommand.ToString(), package.Command.ToString()))
-            return new InspectionResult(InspectionDecision.EndOperation, string.Format('Unexpected command - {0}', package.Command.ToString()))
-            */
+	this._fail(new Error('Command Not Expected: [' + expectedCommand + ', ' + package.messageName + ']'))
+  return new inspection(inspection.decision.EndOperation, 'Unexpected command - ' + package.messageName)
 }
 
 OperationBase.prototype._serialize = function(messageData) {

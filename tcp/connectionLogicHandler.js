@@ -259,6 +259,31 @@ EsConnectionLogicHandler.prototype._raiseAuthenticationFailed = function(reason)
 	})
 }
 
+EsConnectionLogicHandler.prototype._reconnectTo = function(reason) {
+	/*
+	IPEndPoint endPoint = _settings.UseSslConnection
+                                          ? endPoints.SecureTcpEndPoint ?? endPoints.TcpEndPoint
+                                          : endPoints.TcpEndPoint;
+            if (endPoint == null)
+            {
+                CloseConnection("No end point is specified while trying to reconnect.");
+                return;
+            }
+
+            if (_state != ConnectionState.Connected || _connection.RemoteEndPoint.Equals(endPoint))
+                return;
+
+            var msg = string.Format("EventStoreConnection '{0}': going to reconnect to [{1}]. Current endpoint: [{2}, L{3}].",
+                                    _esConnection.ConnectionName, endPoint, _connection.RemoteEndPoint, _connection.LocalEndPoint);
+            if (_settings.VerboseLogging) _settings.Log.Info(msg);
+            CloseTcpConnection(msg);
+
+            _state = ConnectionState.Connecting;
+            _connectingPhase = ConnectingPhase.EndPointDiscovery;
+            EstablishTcpConnection(endPoints);
+            */
+}
+
 EsConnectionLogicHandler.prototype._startConnection = function(endpointDiscoverer, cb) {
 	this._getStateMessageHandler(startConnectionHandlers)
 		.call(this, endpointDiscoverer, cb)
@@ -445,21 +470,22 @@ function handleTcpPackage(connection, package) {
 
   if(operationItem) {
     var result = operationItem.operation.inspectPackage(package)
-    LogDebug('HandleTcpPackage OPERATION DECISION ' + result.decision + ' (' + result.description + '), '
-    	+ operationItem.toString())
+    LogDebug('HandleTcpPackage OPERATION DECISION ' + result.decision
+    	+ ' (' + result.description
+    	+ '), ' + operationItem.toString())
     switch (result.decision) {
       case inspection.decision.DoNothing: break
       case inspection.decision.EndOperation: 
         this._operations.removeOperation(operationItem)
-        break;
+        break
       case inspection.decision.Retry: 
-        _operations.scheduleOperationRetry(operation)
-        break;
+        this._operations.scheduleOperationRetry(operationItem)
+        break
       case inspection.decision.Reconnect:
-        ReconnectTo(new NodeEndPoints(result.TcpEndPoint, result.SecureTcpEndPoint))
-        _operations.scheduleOperationRetry(operation)
-        break;
-      default: throw new Exception(string.Format('Unknown inspection.decision: {0}', result.Decision))
+        this._reconnectTo(result.TcpEndPoint, result.SecureTcpEndPoint)
+        this._operations.scheduleOperationRetry(operationItem)
+        break
+      default: throw new Error('Unknown inspection.decision: ' + result.decision)
     }
 
     if(this._tcpConnectionState === 'Connected') {
@@ -480,13 +506,13 @@ function handleTcpPackage(connection, package) {
         this._subscriptions.scheduleSubscriptionRetry(subscriptionItem);
         break
       case inspection.decision.Reconnect:
-        ReconnectTo(new NodeEndPoints(result.TcpEndPoint, result.SecureTcpEndPoint))
+        this._reconnectTo(result.TcpEndPoint, result.SecureTcpEndPoint)
         this._subscriptions.scheduleSubscriptionRetry(subscriptionItem)
         break
       case inspection.decision.Subscribed:
         subscriptionItem.isSubscribed = true
         break
-      default: throw new Exception(string.Format('Unknown inspection.decision: {0}', result.Decision))
+      default: throw new Error('Unknown inspection.decision: ' + result.decision)
     }
   } else {
     LogDebug('HandleTcpPackage UNMAPPED PACKAGE with CorrelationId {0:B}, Command: {1}', package.CorrelationId, package.Command);
