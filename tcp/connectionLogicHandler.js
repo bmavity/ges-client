@@ -482,7 +482,7 @@ function handleTcpPackage(connection, package) {
         this._operations.scheduleOperationRetry(operationItem)
         break
       case inspection.decision.Reconnect:
-        this._reconnectTo(result.TcpEndPoint, result.SecureTcpEndPoint)
+        this._reconnectTo(result.tcpEndpoint, result.secureTcpEndpoint)
         this._operations.scheduleOperationRetry(operationItem)
         break
       default: throw new Error('Unknown inspection.decision: ' + result.decision)

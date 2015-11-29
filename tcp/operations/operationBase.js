@@ -1,5 +1,7 @@
 var inspection = require('./inspection')
 	, messageParser = require('../messageParser')
+	, notHandledReason = require('./notHandledReason')
+
 
 module.exports.OperationBase = OperationBase
 
@@ -66,26 +68,25 @@ OperationBase.prototype.inspectBadRequest = function(package) {
 }
 
 OperationBase.prototype.inspectNotHandled = function(package) {
-	/*
-	var message = package.Data.Deserialize<ClientMessage.NotHandled>()
-            switch (message.Reason)
-            {
-                case ClientMessage.NotHandled.NotHandledReason.NotReady:
-                    return new InspectionResult(InspectionDecision.Retry, 'NotHandled - NotReady')
-
-                case ClientMessage.NotHandled.NotHandledReason.TooBusy:
-                    return new InspectionResult(InspectionDecision.Retry, 'NotHandled - TooBusy')
-
-                case ClientMessage.NotHandled.NotHandledReason.NotMaster:
-                    var masterInfo = message.AdditionalInfo.Deserialize<ClientMessage.NotHandled.MasterInfo>()
-                    return new InspectionResult(InspectionDecision.Reconnect, 'NotHandled - NotMaster',
-                                                masterInfo.ExternalTcpEndPoint, masterInfo.ExternalSecureTcpEndPoint)
-
-                default:
-                    Log.Error('Unknown NotHandledReason: {0}.', message.Reason)
-                    return new InspectionResult(InspectionDecision.Retry, 'NotHandled - <unknown>')
-            }
-            */
+	var message = messageParser.parse('NotHandled', package.payload)
+	switch(message.reason) {
+		case notHandledReason.NotReady:
+			return new inspection(inspection.decision.Retry, 'NotHandled - NotReady')
+			break
+		case notHandledReason.TooBusy:
+			return new inspection(inspection.decision.Retry, 'NotHandled - TooBusy')
+			break
+		case notHandledReason.NotMaster:
+			var masterInfo = messageParser.parse('NotHandled.MasterInfo', message.masterInfo)
+			return new inspection(inspection.decision.Reconnect, 'NotHandled - TooBusy'
+			, masterInfo.externalTcpEndPoint
+			, masterInfo.externalSecureTcpEndPoint
+			)
+			break
+		default:
+			LogDebug('Unknown NotHandledReason: ' + message.reason + '.')
+			return new inspection(inspection.decision.Retry, 'NotHandled - <unknown>')
+	}
 }
 
 OperationBase.prototype.inspectUnexpectedCommand = function(package, expectedCommand) {
