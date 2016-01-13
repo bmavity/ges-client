@@ -1,22 +1,22 @@
 var util = require('util')
-	, EventEmitter = require('events').EventEmitter
+    , EventEmitter = require('events').EventEmitter;
 
-module.exports = EsSubscription
+module.exports = EsSubscription;
 
 
 function EsSubscription() {
-	if(!(this instanceof EsSubscription)) {
-		return new EsSubscription()
-	}
+    if (!(this instanceof EsSubscription)) {
+        return new EsSubscription()
+    }
 
-	EventEmitter.call(this)
+    EventEmitter.call(this)
 }
-util.inherits(EsSubscription, EventEmitter)
+util.inherits(EsSubscription, EventEmitter);
 
 
-EsSubscription.prototype.unsubscribe = function() {
-	var me = this
-	setImmediate(function() {
-		me.emit('unsubscribe requested')
-	})
-}
+EsSubscription.prototype.unsubscribe = function () {
+    var me = this;
+    setImmediate(function () {
+        me.emit('unsubscribe requested')
+    })
+};
