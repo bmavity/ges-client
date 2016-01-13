@@ -1,4 +1,4 @@
-return
-var replay = require('../ges-client')
+return;
+var replay = require('../ges-client');
 
-replay('test-a')
+replay('test-a');

@@ -1,166 +1,166 @@
 var client = require('../../../')
-	, ges = require('ges-test-helper').memory
-	, uuid = require('node-uuid')
-	, createTestEvent = require('../../createTestEvent')
-	, range = require('../../range')
-	, streamWriter = require('../../streamWriter')
-	, eventStreamCounter = require('../../eventStreamCounter')
+    , ges = require('ges-test-helper').memory
+    , uuid = require('node-uuid')
+    , createTestEvent = require('../../createTestEvent')
+    , range = require('../../range')
+    , streamWriter = require('../../streamWriter')
+    , eventStreamCounter = require('../../eventStreamCounter');
 
-require('../../shouldExtensions')
+require('../../shouldExtensions');
 
-describe('read_all_events_forward_should', function() {
-	var es
-		, connection
-		, testEvents = createTestEvent(range(0, 20))
+describe('read_all_events_forward_should', function () {
+    var es
+        , connection
+        , testEvents = createTestEvent(range(0, 20));
 
-	before(function(done) {
-		es = ges(function(err, settings) {
-			if(err) return done(err)
+    before(function (done) {
+        es = ges(function (err, settings) {
+            if (err) return done(err);
 
-			connection = client(settings, function(err) {
-				if(err) return done(err)
+            connection = client(settings, function (err) {
+                if (err) return done(err);
 
-				es.addConnection(connection)
+                es.addConnection(connection);
 
 
-				var setData = {
-							expectedMetastreamVersion: -1
-						, metadata: client.createStreamMetadata({
-							  acl: {
-									readRoles: client.systemRoles.all
-								}
-							})
-						, auth: {
-								username: client.systemUsers.admin
-							, password: client.systemUsers.defaultAdminPassword
-							}
-						}
+                var setData = {
+                    expectedMetastreamVersion: -1
+                    , metadata: client.createStreamMetadata({
+                        acl: {
+                            readRoles: client.systemRoles.all
+                        }
+                    })
+                    , auth: {
+                        username: client.systemUsers.admin
+                        , password: client.systemUsers.defaultAdminPassword
+                    }
+                };
 
-				connection.setStreamMetadata('$all', setData, function(err) {
-					if(err) return done(err)
-						
-					var appendData = {
-								expectedVersion: client.expectedVersion.emptyStream
-							, events: testEvents
-							}
-					connection.appendToStream('stream', appendData, done)
-				})
-			})
-		})
-	})
+                connection.setStreamMetadata('$all', setData, function (err) {
+                    if (err) return done(err);
 
-  it('return_empty_slice_if_asked_to_read_from_end', function(done) {
-		var readData = {
-					position: client.position.end
-				, maxCount: 1
-				}
-		connection.readAllEventsForward(readData, function(err, result) {
-			if(err) return done(err)
+                    var appendData = {
+                        expectedVersion: client.expectedVersion.emptyStream
+                        , events: testEvents
+                    };
+                    connection.appendToStream('stream', appendData, done)
+                })
+            })
+        })
+    });
 
-			result.IsEndOfStream.should.be.true
-			result.Events.length.should.equal(0)
-			done()
-		})
-	})
+    it('return_empty_slice_if_asked_to_read_from_end', function (done) {
+        var readData = {
+            position: client.position.end
+            , maxCount: 1
+        };
+        connection.readAllEventsForward(readData, function (err, result) {
+            if (err) return done(err);
 
-  it('return_events_in_same_order_as_written', function(done) {
-		var readData = {
-					position: client.position.start
-				, maxCount: 100
-				}
-		connection.readAllEventsForward(readData, function(err, result) {
-			if(err) return done(err)
+            result.IsEndOfStream.should.be.true;
+            result.Events.length.should.equal(0);
+            done()
+        })
+    });
 
-			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
-			
-			nonSystemEvents.should.matchEvents(testEvents)
-			done()
-		})
-	})
+    it('return_events_in_same_order_as_written', function (done) {
+        var readData = {
+            position: client.position.start
+            , maxCount: 100
+        };
+        connection.readAllEventsForward(readData, function (err, result) {
+            if (err) return done(err);
 
-  it('be_able_to_read_all_one_by_one_until_end_of_stream', function(done) {
-  	var nonSystemEvents = []
-  		, currentPosition = client.position.start
+            var nonSystemEvents = result.Events.filter(isNotFromSystemStream);
 
-  	function readNextEvent() {
-			var readData = {
-						position: currentPosition
-					, maxCount: 1
-					}
-			connection.readAllEventsForward(readData, function(err, result) {
-				if(err) return done(err)
+            nonSystemEvents.should.matchEvents(testEvents);
+            done()
+        })
+    });
 
-				if(result.IsEndOfStream) {
-					compareEvents()
-				} else {
-					if(isNotFromSystemStream(result.Events[0])) {
-						nonSystemEvents.push(result.Events[0])
-					}
-					currentPosition = result.NextPosition
-					readNextEvent()
-				}
-			})
-  	}
+    it('be_able_to_read_all_one_by_one_until_end_of_stream', function (done) {
+        var nonSystemEvents = []
+            , currentPosition = client.position.start;
 
-  	function compareEvents() {
-			nonSystemEvents.should.matchEvents(testEvents)
-			done()
-  	}
+        function readNextEvent() {
+            var readData = {
+                position: currentPosition
+                , maxCount: 1
+            };
+            connection.readAllEventsForward(readData, function (err, result) {
+                if (err) return done(err);
 
-  	readNextEvent()
-	})
+                if (result.IsEndOfStream) {
+                    compareEvents()
+                } else {
+                    if (isNotFromSystemStream(result.Events[0])) {
+                        nonSystemEvents.push(result.Events[0])
+                    }
+                    currentPosition = result.NextPosition;
+                    readNextEvent()
+                }
+            })
+        }
 
-  it('be_able_to_read_events_slice_at_time', function(done) {
-  	var nonSystemEvents = []
-  		, currentPosition = client.position.start
+        function compareEvents() {
+            nonSystemEvents.should.matchEvents(testEvents);
+            done()
+        }
 
-  	function readNextEvent() {
-			var readData = {
-						position: currentPosition
-					, maxCount: 5
-					}
-			connection.readAllEventsForward(readData, function(err, result) {
-				if(err) return done(err)
+        readNextEvent()
+    });
 
-				if(result.IsEndOfStream) {
-					compareEvents()
-				} else {
-					nonSystemEvents = nonSystemEvents.concat(result.Events.filter(isNotFromSystemStream))
-					currentPosition = result.NextPosition
-					readNextEvent()
-				}
-			})
-  	}
+    it('be_able_to_read_events_slice_at_time', function (done) {
+        var nonSystemEvents = []
+            , currentPosition = client.position.start;
 
-  	function compareEvents() {
-			nonSystemEvents.should.matchEvents(testEvents)
-			done()
-  	}
+        function readNextEvent() {
+            var readData = {
+                position: currentPosition
+                , maxCount: 5
+            };
+            connection.readAllEventsForward(readData, function (err, result) {
+                if (err) return done(err);
 
-  	readNextEvent()
-	})
+                if (result.IsEndOfStream) {
+                    compareEvents()
+                } else {
+                    nonSystemEvents = nonSystemEvents.concat(result.Events.filter(isNotFromSystemStream));
+                    currentPosition = result.NextPosition;
+                    readNextEvent()
+                }
+            })
+        }
 
-  it('return_partial_slice_if_not_enough_events', function(done) {
-		var readData = {
-					position: client.position.start
-				, maxCount: 100
-				}
-		connection.readAllEventsForward(readData, function(err, result) {
-			if(err) return done(err)
+        function compareEvents() {
+            nonSystemEvents.should.matchEvents(testEvents);
+            done()
+        }
 
-			var nonSystemEvents = result.Events.filter(isNotFromSystemStream)
-			
-			nonSystemEvents.length.should.be.lessThan(30)
-			nonSystemEvents.should.matchEvents(testEvents)
-			done()
-		})
-	})
+        readNextEvent()
+    });
 
-  after(function(done) {
-  	es.cleanup(done)
-  })
-})
+    it('return_partial_slice_if_not_enough_events', function (done) {
+        var readData = {
+            position: client.position.start
+            , maxCount: 100
+        };
+        connection.readAllEventsForward(readData, function (err, result) {
+            if (err) return done(err);
+
+            var nonSystemEvents = result.Events.filter(isNotFromSystemStream);
+
+            nonSystemEvents.length.should.be.lessThan(30);
+            nonSystemEvents.should.matchEvents(testEvents);
+            done()
+        })
+    });
+
+    after(function (done) {
+        es.cleanup(done)
+    })
+});
 
 function isNotFromSystemStream(evt) {
-	return !client.systemStreams.isSystemStream(evt.Event.EventStreamId)
+    return !client.systemStreams.isSystemStream(evt.Event.EventStreamId)
 }
