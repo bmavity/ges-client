@@ -529,8 +529,8 @@ function handleTcpPackage(connection, package) {
       default: throw new Error('Unknown inspection.decision: ' + result.decision)
     }
   } else {
-	  console.log('connection logic handler line 532')
-  	console.log(package)
+	  LogInfo('connection logic handler line 532')
+  	LogInfo(package)
     LogDebug('HandleTcpPackage UNMAPPED PACKAGE with CorrelationId ' + package.correlationId
     	+ ', Command: ', package.messageName
     )
